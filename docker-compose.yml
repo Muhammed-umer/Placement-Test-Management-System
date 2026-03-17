@@ -1,0 +1,82 @@
+# Remove 'version' line as it is obsolete for modern Docker
+services:
+  db:
+    image: postgres:15
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: assesshub
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    restart: always
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 4G
+
+  backend:
+    build: 
+      context: ./backend
+    ports:
+      - "8080:8080"
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://db:5432/assesshub
+      - SPRING_DATASOURCE_USERNAME=postgres
+      - SPRING_DATASOURCE_PASSWORD=postgres
+      - JUDGE0_API_URL=http://server:2358
+      # Technical Advice: Use Stateless JWT so 100 sessions don't bloat RAM
+      - JWT_SECRET=your_very_secure_random_string_here
+    depends_on:
+      - db
+      - server
+    restart: always
+
+  frontend:
+    build: 
+      context: ./frontend
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    restart: always
+
+  redis:
+    image: redis:7.0-alpine
+    restart: always
+    volumes:
+      - redis_data:/data
+    ports:
+      - "6379:6379"
+
+  server:
+    image: judge0/judge0:1.13.0
+    volumes:
+      - ./judge0.conf:/judge0.conf:ro
+    ports:
+      - "2358:2358"
+    privileged: true
+    restart: always
+    depends_on:
+      - db
+      - redis
+
+  workers:
+    image: judge0/judge0:1.13.0
+    command: ["./docker/workers"]
+    volumes:
+      - ./judge0.conf:/judge0.conf:ro
+    privileged: true
+    restart: always
+    depends_on:
+      - db
+      - redis
+    # High-Concurrency Strategy: Spawn multiple workers to handle parallel code grading
+    deploy:
+      replicas: 4 
+
+volumes:
+  postgres_data:
+  redis_data:
