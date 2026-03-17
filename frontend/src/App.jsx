@@ -2,6 +2,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import AdminDashboard from './pages/AdminDashboard';
+import CreateQuiz from './pages/CreateQuiz';
 import AssessmentEnvironment from './pages/AssessmentEnvironment';
 
 function App() {
@@ -17,7 +18,9 @@ function App() {
           <Route path="/login" element={<Login />} />
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/admin" element={<AdminDashboard />} />
+          <Route path="/admin/create-quiz" element={<CreateQuiz />} />
           <Route path="/assessment" element={<AssessmentEnvironment />} />
+          <Route path="/assessment/:id" element={<AssessmentEnvironment />} />
         </Routes>
       </div>
     </Router>

@@ -2,8 +2,8 @@ package com.example.placement_test_system.model;
 
 import jakarta.persistence.*;
 import lombok.*;
+import java.time.LocalDateTime;
 import java.util.List;
-
 @Entity
 @Data
 @Builder
@@ -22,6 +22,13 @@ public class Assessment {
 
     private int totalPoints;
     private int durationMinutes;
+
+    private LocalDateTime startTime;
+    private LocalDateTime endTime;
+    private String url;
+
+    @ElementCollection
+    private List<String> allowedLanguages;
 
     @OneToMany(cascade = CascadeType.ALL)
     private List<Question> questions;
