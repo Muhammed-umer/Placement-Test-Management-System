@@ -14,19 +14,22 @@ public class Question {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @Enumerated(EnumType.STRING)
+    private QuestionType questionType; // MCQ, FILL_UP, or CODING
+
     private String title;
 
     @Column(columnDefinition = "TEXT")
-    private String description; // Used for problem statement or quiz question text
+    private String description;
 
     private int points;
 
-    // Quiz Specific Fields
+    // Quiz Specific
     @ElementCollection
-    private List<String> options; // For MCQs
+    private List<String> options;
     private String correctAnswer;
 
-    // Coding Specific Fields (for Judge0)
+    // Coding Specific
     @Column(columnDefinition = "TEXT")
     private String inputFormat;
     @Column(columnDefinition = "TEXT")
