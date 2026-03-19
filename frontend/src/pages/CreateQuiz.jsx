@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  Globe, Clock, Save, PlusCircle, Trash2, ListChecks, CheckCircle2, ArrowLeft,
+  Globe, Save, PlusCircle, Trash2, ListChecks, CheckCircle2, ArrowLeft,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
@@ -45,6 +45,22 @@ export default function CreateQuiz() {
     setQuestions(updated);
   };
 
+  const addOption = (questionIndex) => {
+    const updated = [...questions];
+    updated[questionIndex].options.push('');
+    setQuestions(updated);
+  };
+
+  const removeOption = (questionIndex, optionIndex) => {
+     const updated = [...questions];
+     updated[questionIndex].options.splice(optionIndex, 1);
+     // if the removed option was the correct answer, clear the correct answer
+     if(updated[questionIndex].correctAnswer && !updated[questionIndex].options.includes(updated[questionIndex].correctAnswer)) {
+        updated[questionIndex].correctAnswer = '';
+     }
+     setQuestions(updated);
+  };
+
   const removeQuestion = (index) => {
     setQuestions(questions.filter((_, i) => i !== index));
   };
@@ -68,19 +84,26 @@ export default function CreateQuiz() {
       title: contestName,
       description: `Quiz ID: ${contestUrl}`,
       type: 'QUIZ',
-      totalPoints,
-      durationMinutes,
+      totalPoints: totalPoints || 0,
+      durationMinutes: durationMinutes || 60,
       startTime: startTime ? new Date(startTime).toISOString() : null,
       endTime: (endTime && !noEndTime) ? new Date(endTime).toISOString() : null,
       url: contestUrl,
-      questions: questions,
+      questions: questions.map(q => ({
+        ...q,
+        points: Number(q.points)
+      })),
       allowedLanguages: []
     };
 
     try {
+      const token = localStorage.getItem('token');
       const res = await fetch('http://localhost:8081/api/v1/assessments', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+        },
         body: JSON.stringify(payload)
       });
       if (res.ok) {
@@ -181,6 +204,9 @@ export default function CreateQuiz() {
                       className="bg-slate-900 border border-slate-700 text-emerald-400 text-sm font-bold px-3 py-1.5 rounded-lg outline-none focus:ring-1 focus:ring-emerald-500"
                     >
                       <option value="MCQ">Multiple Choice</option>
+                      <option value="CHECKBOX">Checkboxes</option>
+                      <option value="SHORT_ANSWER">Short Answer</option>
+                      <option value="LONG_ANSWER">Long Paragraph</option>
                       <option value="FILL_UP">Fill in the Blanks</option>
                     </select>
                   </div>
@@ -198,26 +224,34 @@ export default function CreateQuiz() {
                     className="premium-input w-full p-5 rounded-xl min-h-[100px] text-lg font-medium"
                   />
 
-                  {q.questionType === 'MCQ' ? (
+                  {q.questionType === 'MCQ' || q.questionType === 'CHECKBOX' ? (
                     <>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-slate-900/40 p-5 rounded-xl border border-slate-700/50">
-                        <div className="col-span-full mb-2">
-                          <h4 className="text-sm font-bold text-slate-300 uppercase tracking-widest">Multiple Choice Options</h4>
+                        <div className="col-span-full flex justify-between items-center mb-2">
+                          <h4 className="text-sm font-bold text-slate-300 uppercase tracking-widest">Options</h4>
+                          <button onClick={() => addOption(index)} className="text-xs text-emerald-400 flex items-center gap-1 hover:text-emerald-300">
+                             <PlusCircle size={14} /> Add Option
+                          </button>
                         </div>
                         {q.options.map((opt, oIdx) => (
-                          <div key={oIdx} className="flex items-center gap-3">
-                            <span className="font-bold text-slate-500 text-sm w-6 text-center">{['A', 'B', 'C', 'D'][oIdx]}</span>
+                          <div key={oIdx} className="flex items-center gap-3 relative group">
+                            <span className="font-bold text-slate-500 text-sm w-6 text-center">{['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'][oIdx] || oIdx + 1}</span>
                             <input
                               type="text"
-                              placeholder={`Option ${['A', 'B', 'C', 'D'][oIdx]} value`}
+                              placeholder={`Option ${['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'][oIdx] || oIdx + 1} value`}
                               value={opt}
                               onChange={(e) => {
                                 const newOptions = [...q.options];
                                 newOptions[oIdx] = e.target.value;
                                 updateQuestion(index, 'options', newOptions);
                               }}
-                              className={`premium-input w-full p-3 rounded-lg border transition-colors ${q.correctAnswer === opt && opt !== '' ? 'border-emerald-500 bg-emerald-500/10 text-emerald-100' : 'border-slate-700'}`}
+                              className={`premium-input w-full p-3 rounded-lg border transition-colors pr-10 ${q.correctAnswer === opt && opt !== '' ? 'border-emerald-500 bg-emerald-500/10 text-emerald-100' : 'border-slate-700'}`}
                             />
+                            {q.options.length > 2 && (
+                               <button onClick={() => removeOption(index, oIdx)} className="absolute right-3 top-1/2 -translate-y-1/2 text-rose-500/50 hover:text-rose-500 opacity-0 group-hover:opacity-100 transition-opacity">
+                                  <Trash2 size={16} />
+                               </button>
+                            )}
                           </div>
                         ))}
                       </div>
@@ -231,11 +265,17 @@ export default function CreateQuiz() {
                         >
                           <option value="">-- Choose correct option --</option>
                           {q.options.map((opt, oIdx) => opt && (
-                            <option key={oIdx} value={opt}>Option {['A', 'B', 'C', 'D'][oIdx]} ({opt})</option>
+                            <option key={oIdx} value={opt}>Option {['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'][oIdx] || oIdx + 1} ({opt})</option>
                           ))}
                         </select>
                       </div>
                     </>
+                  ) : q.questionType === 'SHORT_ANSWER' || q.questionType === 'LONG_ANSWER' ? (
+                     <div className="pt-2 border-2 border-dashed border-slate-700/50 rounded-xl p-6 text-center bg-slate-900/40">
+                        <p className="text-slate-400 font-medium mb-2">This is a descriptive {q.questionType === 'SHORT_ANSWER' ? 'short' : 'long'} answer question.</p>
+                        <p className="text-xs text-slate-500 italic">Students will receive a text area to write their response. Manual evaluation is supported.</p>
+                        <input type="hidden" value={q.correctAnswer = 'MANUAL_EVALUATION'} />
+                     </div>
                   ) : (
                     <div className="pt-2">
                       <label className="block text-sm font-medium text-emerald-400 mb-2">Correct Answer (Fill-up)</label>
@@ -263,7 +303,7 @@ export default function CreateQuiz() {
       </AnimatePresence>
 
       {/* FIXED FOOTER FIX: Floating container with pointer-events-none */}
-      <div className="fixed bottom-0 left-0 right-0 p-8 z-50 pointer-events-none flex justify-end items-center gap-4">
+      <div className="fixed bottom-0 left-0 right-0 p-8 z-50 pointer-events-none flex justify-end items-center gap-4 bg-gradient-to-t from-[#0a0f1a] to-transparent">
         {publishSuccess && (
           <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="pointer-events-auto text-emerald-400 flex items-center gap-2 font-bold bg-slate-900 border border-emerald-500/50 px-6 py-3 rounded-2xl shadow-2xl backdrop-blur-xl">
             <CheckCircle2 size={18} /> Quiz Saved Successfully!
@@ -272,9 +312,9 @@ export default function CreateQuiz() {
         <button
           onClick={handlePublish}
           disabled={!contestName || isPublishing || questions.length === 0}
-          className={`pointer-events-auto btn-primary px-10 py-4 rounded-2xl font-black tracking-widest uppercase text-sm flex items-center gap-3 transition-all shadow-2xl ${(!contestName || isPublishing || questions.length === 0) ? 'opacity-50 cursor-not-allowed grayscale' : 'hover:-translate-y-2 hover:scale-105 active:scale-95 shadow-emerald-500/40'}`}
+          className={`pointer-events-auto btn-primary px-10 py-5 rounded-[1.5rem] font-black tracking-widest uppercase text-xs flex items-center gap-3 transition-all shadow-2xl ${(!contestName || isPublishing || questions.length === 0) ? 'opacity-50 cursor-not-allowed grayscale' : 'hover:-translate-y-2 hover:scale-[1.02] active:scale-95 shadow-emerald-500/40'}`}
         >
-          {isPublishing ? <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <Save size={20} />}
+          {isPublishing ? <div className="w-5 h-5 border-2 border-slate-300 border-t-white rounded-full animate-spin" /> : <Save size={18} />}
           {isPublishing ? 'Publishing...' : 'Save & Publish Quiz'}
         </button>
       </div>

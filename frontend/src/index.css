@@ -1,16 +1,32 @@
 @import "tailwindcss";
 
 @theme {
-  --color-primary-500: #10b981; /* Emerald 500 */
-  --color-secondary-500: #8b5cf6; /* Violet 500 */
-  --color-danger-500: #f43f5e; /* Rose 500 */
-  --color-dark-900: #0f172a; /* Slate 900 */
-  --color-dark-800: #1e293b; /* Slate 800 */
-  --color-dark-700: #334155; /* Slate 700 */
-  --color-text-main: #f8fafc; /* Slate 50 */
-  --color-text-muted: #94a3b8; /* Slate 400 */
+  --color-brand-50: #FFFFFF;
+  --color-brand-100: #F0FFF0;
+  --color-brand-300: #98FB98;
+  --color-brand-500: #00FA9A;
+  --color-brand-600: #00FF7F;
+  --color-brand-700: #00cc66; /* Need some darker shades for text legibility */
+  --color-brand-800: #00994d;
+  --color-brand-900: #006633;
+
+  --color-primary-500: #00FA9A; /* Map legacy primary */
   
   --font-sans: 'Inter', system-ui, sans-serif;
+}
+
+/* Fix double eye icon in Edge/Chrome */
+input[type="password"]::-ms-reveal,
+input[type="password"]::-ms-clear {
+  display: none;
+}
+input[type="password"]::-webkit-contacts-auto-fill-button,
+input[type="password"]::-webkit-credentials-auto-fill-button {
+  visibility: hidden;
+  display: none !important;
+  pointer-events: none;
+  position: absolute;
+  right: 0;
 }
 
 body {
@@ -20,72 +36,76 @@ body {
   font-family: 'Inter', system-ui, sans-serif;
   background-color: var(--color-dark-900);
   color: var(--color-text-main);
-  background-image: radial-gradient(circle at 50% 0%, #1e293b 0%, #0f172a 100%);
-  background-attachment: fixed;
+  background-image: none;
 }
 
-/* Base tailwind elements overriden as needed for premium dark feel */
+/* Base tailwind elements overriden for clean light feel */
 .glass-panel {
-  background: rgba(30, 41, 59, 0.7);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
+  border-radius: 12px;
 }
 
 .premium-input {
-  background: rgba(15, 23, 42, 0.6);
-  border: 1px solid rgba(148, 163, 184, 0.2);
-  color: #f8fafc;
-  transition: all 0.3s ease;
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  color: #0f172a;
+  transition: all 0.2s ease;
 }
 
 .premium-input:focus {
   outline: none;
-  border-color: #10b981;
-  box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.2);
+  border-color: #4f46e5;
+  box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.15);
+  background: #fff;
 }
 
 .btn-primary {
-  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  background: #4f46e5;
   color: white;
   border: none;
-  transition: all 0.3s ease;
-  box-shadow: 0 4px 14px rgba(16, 185, 129, 0.4);
+  transition: all 0.2s ease;
+  box-shadow: 0 4px 10px rgba(79, 70, 229, 0.3);
 }
 
 .btn-primary:hover {
   transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(16, 185, 129, 0.6);
+  box-shadow: 0 6px 15px rgba(79, 70, 229, 0.4);
+  background: #4338ca;
 }
 
 .btn-danger {
-  background: linear-gradient(135deg, #f43f5e 0%, #e11d48 100%);
+  background: #ef4444;
   color: white;
   border: none;
-  transition: all 0.3s ease;
-  box-shadow: 0 4px 14px rgba(244, 63, 94, 0.4);
+  transition: all 0.2s ease;
+  box-shadow: 0 4px 10px rgba(239, 68, 68, 0.3);
 }
 
 .btn-danger:hover {
   transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(244, 63, 94, 0.6);
+  box-shadow: 0 6px 15px rgba(239, 68, 68, 0.4);
+  background: #dc2626;
 }
 
 /* Palette status colors */
 .palette-unvisited {
-  background: #334155;
-  border-color: #475569;
+  background: #e2e8f0;
+  border-color: #cbd5e1;
+  color: #475569;
 }
 
 .palette-skipped {
-  background: #f43f5e;
-  border-color: #e11d48;
+  background: #ef4444;
+  border-color: #dc2626;
+  color: white;
 }
 
 .palette-attempted {
-  background: #10b981;
-  border-color: #059669;
+  background: #4f46e5;
+  border-color: #4338ca;
+  color: white;
 }
 
 /* Scrollbar */
@@ -94,14 +114,14 @@ body {
   height: 8px;
 }
 ::-webkit-scrollbar-track {
-  background: #0f172a; 
+  background: #f1f5f9; 
 }
 ::-webkit-scrollbar-thumb {
-  background: #334155; 
+  background: #cbd5e1; 
   border-radius: 4px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #475569; 
+  background: #94a3b8; 
 }
 
 /* Fix monaco editor taking over full height unexpectedly */
@@ -109,5 +129,5 @@ body {
   height: calc(100vh - 150px);
   border-radius: 8px;
   overflow: hidden;
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: 1px solid #e2e8f0;
 }

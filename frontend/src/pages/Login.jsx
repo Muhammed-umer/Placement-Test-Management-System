@@ -32,6 +32,7 @@ export default function Login() {
       if (!response.ok) throw new Error(data.message || 'Invalid Credentials');
       
       localStorage.setItem('token', data.token);
+      localStorage.setItem('mustChangePassword', data.mustChangePassword);
       
       if (data.role === 'ROLE_ADMIN' || data.role === 'ROLE_SUPER_ADMIN') {
         navigate('/admin');
@@ -46,52 +47,52 @@ export default function Login() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center p-4">
+    <div className="flex min-h-screen items-center justify-center p-4 bg-brand-100">
       <div className="w-full max-w-md glass-panel p-8 rounded-2xl relative z-10">
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center p-3 rounded-full bg-emerald-500/10 mb-4 border border-emerald-500/30">
-            <GraduationCap className="h-8 w-8 text-emerald-400" />
+          <div className="inline-flex items-center justify-center p-4 rounded-full bg-brand-50 mb-4 border border-brand-300">
+            <GraduationCap className="h-10 w-10 text-brand-700" />
           </div>
-          <h1 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-emerald-400 to-cyan-400 drop-shadow-sm">
+          <h1 className="text-3xl font-extrabold text-brand-800 tracking-tight">
             GCEE-AssessHub
           </h1>
-          <p className="text-slate-400 mt-2 text-sm">Institutional Grade Assessment Engine</p>
+          <p className="text-slate-500 mt-2 text-sm font-medium">Institutional Grade Assessment Engine</p>
         </div>
 
         {error && (
-          <div className="mb-6 flex items-center gap-2 p-3 bg-rose-500/10 border border-rose-500/30 rounded-lg text-rose-400 text-sm">
-            <ShieldAlert className="h-4 w-4 shrink-0" />
+          <div className="mb-6 flex items-center gap-2 p-3 bg-red-50 border border-red-200 rounded-lg text-red-600 text-sm font-medium">
+            <ShieldAlert className="h-5 w-5 shrink-0" />
             <p>{error}</p>
           </div>
         )}
 
-        <form onSubmit={handleLogin} className="space-y-5">
+        <form onSubmit={handleLogin} className="space-y-6">
           <div>
-            <label className="block text-sm font-medium text-slate-300 mb-1.5">Email Address</label>
+            <label className="block text-sm font-semibold text-slate-700 mb-1.5">Email Address</label>
             <input
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full px-4 py-2.5 rounded-lg premium-input placeholder-slate-500"
+              className="w-full px-4 py-3 rounded-xl premium-input placeholder-slate-400 font-medium"
               placeholder="id@gcee.ac.in"
               required
             />
           </div>
           
           <div>
-            <label className="block text-sm font-medium text-slate-300 mb-1.5">Password</label>
+            <label className="block text-sm font-semibold text-slate-700 mb-1.5">Password</label>
             <div className="relative">
               <input
                 type={showPassword ? "text" : "password"}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full px-4 py-2.5 rounded-lg premium-input placeholder-slate-500 pr-10"
+                className="w-full px-4 py-3 rounded-xl premium-input placeholder-slate-400 font-medium pr-12"
                 placeholder="••••••••"
                 required
               />
               <button
                 type="button"
-                className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-200"
+                className="absolute inset-y-0 right-0 pr-4 flex items-center text-slate-400 hover:text-brand-600 transition-colors"
                 onClick={() => setShowPassword(!showPassword)}
               >
                 {showPassword ? (
@@ -106,21 +107,21 @@ export default function Login() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full py-3 rounded-lg font-medium btn-primary flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed"
+            className="w-full py-3.5 rounded-xl font-bold btn-primary flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed shadow-md shadow-brand-500/20"
           >
             {loading ? (
               <div className="h-5 w-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
             ) : (
               <>
                 <span>Secure Login</span>
-                <LogIn className="w-4 h-4" />
+                <LogIn className="w-5 h-5" />
               </>
             )}
           </button>
         </form>
         
-        <div className="mt-8 pt-6 border-t border-slate-700/50 text-center">
-          <p className="text-xs text-slate-500">
+        <div className="mt-8 pt-6 border-t border-slate-200 text-center">
+          <p className="text-xs text-slate-500 font-medium">
             Authorized personnel only. All access is monitored.
           </p>
         </div>
