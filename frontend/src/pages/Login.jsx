@@ -14,7 +14,13 @@ export default function Login() {
     e.preventDefault();
     setError('');
     
-    if (!email.trim().endsWith('@gcee.ac.in')) {
+    // Auto-append @gcee.ac.in if user didn't type it
+    let finalEmail = email.trim();
+    if (!finalEmail.includes('@')) {
+      finalEmail = finalEmail + '@gcee.ac.in';
+    }
+
+    if (!finalEmail.endsWith('@gcee.ac.in')) {
       setError('Access restricted to @gcee.ac.in accounts only');
       return;
     }
@@ -24,12 +30,15 @@ export default function Login() {
       const response = await fetch('http://localhost:8081/api/v1/auth/authenticate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password })
+        body: JSON.stringify({ email: finalEmail, password })
       });
       
-      const data = await response.json();
+      const data = await response.json().catch(() => ({ message: 'Invalid Credentials' }));
       
-      if (!response.ok) throw new Error(data.message || 'Invalid Credentials');
+      if (!response.ok) {
+        if (response.status === 403) throw new Error('Incorrect credentials or account disabled.');
+        throw new Error(data.message || 'Invalid Credentials');
+      }
       
       localStorage.setItem('token', data.token);
       localStorage.setItem('mustChangePassword', data.mustChangePassword);
@@ -56,7 +65,7 @@ export default function Login() {
           <h1 className="text-3xl font-extrabold text-brand-800 tracking-tight">
             GCEE-AssessHub
           </h1>
-          <p className="text-slate-500 mt-2 text-sm font-medium">Institutional Grade Assessment Engine</p>
+          <p className="text-[#2C3E50] mt-2 text-sm font-medium">Institutional Grade Assessment Engine</p>
         </div>
 
         {error && (
@@ -68,31 +77,36 @@ export default function Login() {
 
         <form onSubmit={handleLogin} className="space-y-6">
           <div>
-            <label className="block text-sm font-semibold text-slate-700 mb-1.5">Email Address</label>
-            <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="w-full px-4 py-3 rounded-xl premium-input placeholder-slate-400 font-medium"
-              placeholder="id@gcee.ac.in"
-              required
-            />
+            <label className="block text-sm font-black text-[#2C3E50] uppercase tracking-widest mb-2">Student/Faculty ID</label>
+            <div className="flex bg-[#FFFFFF] rounded-xl border-2 border-[#4CAF50] hover:border-[#007ACC] focus-within:border-[#007ACC] focus-within:ring-4 focus-within:ring-[#4CAF50]/30 transition-all overflow-hidden shadow-sm">
+              <input
+                type="text"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="w-full px-4 py-3 bg-transparent placeholder-[#2C3E50]/40 font-bold outline-none text-[#2C3E50] text-base"
+                placeholder="Ex: alice"
+                required
+              />
+              <div className="px-5 py-3 bg-[#F4F4F4] text-[#2C3E50]/70 font-black border-l-2 border-[#4CAF50] shrink-0 whitespace-nowrap text-base flex items-center">
+                @gcee.ac.in
+              </div>
+            </div>
           </div>
           
           <div>
-            <label className="block text-sm font-semibold text-slate-700 mb-1.5">Password</label>
-            <div className="relative">
+            <label className="block text-sm font-black text-[#2C3E50] uppercase tracking-widest mb-2">Password</label>
+            <div className="relative flex bg-[#FFFFFF] rounded-xl border-2 border-[#4CAF50] hover:border-[#007ACC] focus-within:border-[#007ACC] focus-within:ring-4 focus-within:ring-[#4CAF50]/30 transition-all overflow-hidden shadow-sm">
               <input
                 type={showPassword ? "text" : "password"}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full px-4 py-3 rounded-xl premium-input placeholder-slate-400 font-medium pr-12"
+                className="w-full px-4 py-3 bg-transparent placeholder-[#2C3E50]/40 font-bold outline-none text-[#2C3E50] text-base pr-12"
                 placeholder="••••••••"
                 required
               />
               <button
                 type="button"
-                className="absolute inset-y-0 right-0 pr-4 flex items-center text-slate-400 hover:text-brand-600 transition-colors"
+                className="absolute inset-y-0 right-0 pr-4 flex items-center text-[#2C3E50]/70 hover:text-[#007ACC] transition-colors"
                 onClick={() => setShowPassword(!showPassword)}
               >
                 {showPassword ? (
@@ -120,8 +134,8 @@ export default function Login() {
           </button>
         </form>
         
-        <div className="mt-8 pt-6 border-t border-slate-200 text-center">
-          <p className="text-xs text-slate-500 font-medium">
+        <div className="mt-8 pt-6 border-t border-[#4CAF50] text-center">
+          <p className="text-xs text-[#2C3E50] font-medium">
             Authorized personnel only. All access is monitored.
           </p>
         </div>

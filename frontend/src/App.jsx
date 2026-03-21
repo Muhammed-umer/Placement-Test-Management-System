@@ -30,10 +30,10 @@ const ProtectedRoute = ({ children }) => {
 function App() {
   return (
     <Router>
-      <div className="min-h-screen text-slate-800 bg-brand-100 relative overflow-hidden font-sans">
+      <div className="min-h-screen text-[#2C3E50] bg-[#F4F4F4] relative overflow-hidden font-sans">
         {/* Abstract background blobs for premium feel */}
-        <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-brand-300/40 rounded-full blur-[120px] pointer-events-none"></div>
-        <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-brand-300/40 rounded-full blur-[120px] pointer-events-none"></div>
+        <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-[#4CAF50]/40 rounded-full blur-[120px] pointer-events-none"></div>
+        <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-[#4CAF50]/40 rounded-full blur-[120px] pointer-events-none"></div>
         
         <Routes>
           <Route path="/" element={<Navigate to="/login" replace />} />

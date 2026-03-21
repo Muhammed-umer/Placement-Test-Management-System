@@ -10,6 +10,7 @@ export default function CreateQuiz() {
   const [activeTab, setActiveTab] = useState('details');
   const [isPublishing, setIsPublishing] = useState(false);
   const [publishSuccess, setPublishSuccess] = useState(false);
+  const [toastMessage, setToastMessage] = useState(null);
 
   const [contestName, setContestName] = useState('');
   const [startTime, setStartTime] = useState('');
@@ -21,12 +22,18 @@ export default function CreateQuiz() {
 
   useEffect(() => {
     if (contestName) {
-      const formatted = contestName.toLowerCase().replace(/[^a-z0-9]+/g, '-');
-      setContestUrl(`https://assesshub.gcee.ac.in/q/${formatted}`);
+      setContestUrl(`${window.location.origin}/assessment/PENDING-ID`);
     } else {
       setContestUrl('');
     }
   }, [contestName]);
+
+  useEffect(() => {
+    if (toastMessage) {
+      const timer = setTimeout(() => setToastMessage(null), 4000);
+      return () => clearTimeout(timer);
+    }
+  }, [toastMessage]);
 
   const addQuizQuestion = () => {
     setQuestions([...questions, {
@@ -68,7 +75,7 @@ export default function CreateQuiz() {
   const handlePublish = async () => {
     const isInvalid = questions.some(q => !q.correctAnswer || !q.title);
     if (isInvalid) {
-      alert("Please ensure all questions have a title and a correct answer marked.");
+      setToastMessage({ title: "Please ensure all questions have a title and a correct answer marked.", type: 'error' });
       return;
     }
 
@@ -121,61 +128,76 @@ export default function CreateQuiz() {
   };
 
   return (
-    <div className="min-h-screen pt-12 p-4 md:p-8 max-w-5xl mx-auto z-10 relative text-slate-200 font-sans pb-48">
-      <div className="mb-8 flex flex-col md:flex-row md:items-end justify-between gap-4">
+    <div className="min-h-screen pt-12 p-4 md:p-8 max-w-5xl mx-auto z-10 relative text-[#2C3E50] font-sans pb-48">
+      {/* STICKY TOPBAR */}
+      <div className="sticky top-0 z-50 bg-[#F4F4F4] pt-8 pb-4 border-b-2 border-[#4CAF50]/30 mb-8 flex flex-col md:flex-row md:items-center justify-between gap-4 px-4 -mx-4 shadow-sm md:px-8 md:-mx-8">
         <div>
-          <button onClick={() => navigate('/admin')} className="text-emerald-400 flex items-center gap-1 mb-4 hover:underline text-sm font-medium">
-            <ArrowLeft size={16} /> Back to Overview
+          <button onClick={() => navigate('/admin')} className="text-[#007ACC] flex items-center gap-1 mb-2 hover:underline text-sm font-black uppercase tracking-wider">
+            <ArrowLeft size={16} /> Overview
           </button>
-          <h1 className="text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-cyan-400 tracking-tight flex items-center gap-3">
-            <ListChecks size={36} className="text-emerald-400" /> Quiz Builder
+          <h1 className="text-2xl md:text-4xl font-extrabold text-[#2C3E50] tracking-tight flex items-center gap-3">
+            <ListChecks size={28} className="text-[#007ACC]" /> Quiz Builder
           </h1>
         </div>
 
-        <div className="flex items-center bg-slate-800/80 p-1.5 rounded-xl border border-slate-700 overflow-x-auto">
-          {['details', 'questions'].map(tab => (
-            <button
-              key={tab}
-              onClick={() => setActiveTab(tab)}
-              className={`px-6 py-2 rounded-lg font-semibold transition-all duration-300 capitalize whitespace-nowrap ${activeTab === tab ? 'bg-emerald-500 text-white shadow-lg' : 'text-slate-400 hover:text-white hover:bg-slate-700/50'}`}
-            >
-              {tab}
-            </button>
-          ))}
+        <div className="flex flex-col sm:flex-row items-center gap-4">
+          <div className="flex items-center bg-[#FFFFFF] p-1.5 rounded-xl border-2 border-[#4CAF50] shadow-sm">
+            {['details', 'questions'].map(tab => (
+              <button
+                key={tab}
+                onClick={() => setActiveTab(tab)}
+                className={`px-6 py-2 rounded-lg font-black transition-all duration-300 capitalize whitespace-nowrap ${activeTab === tab ? 'bg-[#007ACC] text-white shadow-md' : 'text-[#2C3E50]/70 hover:text-[#2C3E50] hover:bg-[#F4F4F4]'}`}
+              >
+                {tab}
+              </button>
+            ))}
+          </div>
+          
+          <AnimatePresence>
+            {activeTab === 'questions' && (
+              <motion.button 
+                initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.9 }}
+                onClick={addQuizQuestion} 
+                className="bg-[#007ACC] text-white px-5 py-2.5 rounded-xl flex items-center gap-2 hover:bg-[#F0A500] transition-colors font-black uppercase tracking-widest text-xs hidden md:flex shadow-lg shadow-[#007ACC]/30"
+              >
+                <PlusCircle size={18} /> Add
+              </motion.button>
+            )}
+          </AnimatePresence>
         </div>
       </div>
 
       <AnimatePresence mode="wait">
         {activeTab === 'details' && (
           <motion.div key="details" initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }} className="space-y-6">
-            <div className="glass-panel p-8 rounded-2xl border border-slate-700/50 shadow-2xl relative overflow-hidden">
+            <div className="glass-panel p-8 rounded-2xl border border-[#4CAF50]/50 shadow-2xl relative overflow-hidden">
               <h2 className="text-2xl font-bold mb-6 flex items-center gap-3">
-                <Globe className="text-emerald-400" /> General Setup
+                <Globe className="text-[#007ACC]" /> General Setup
               </h2>
               <div className="space-y-5 relative z-10">
                 <div>
-                  <label className="block text-sm font-medium text-slate-400 mb-2 font-bold tracking-wider">Quiz Name</label>
+                  <label className="block text-sm font-medium text-[#2C3E50] mb-2 font-bold tracking-wider">Quiz Name</label>
                   <input type="text" value={contestName} onChange={(e) => setContestName(e.target.value)} placeholder="e.g., Midterm Evaluation" className="premium-input w-full p-4 rounded-xl text-lg font-semibold" />
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                   <div>
-                    <label className="block text-sm font-medium text-slate-400 mb-2 font-bold tracking-wider">Start Time (IST)</label>
+                    <label className="block text-sm font-medium text-[#2C3E50] mb-2 font-bold tracking-wider">Start Time (IST)</label>
                     <input type="datetime-local" value={startTime} onChange={(e) => setStartTime(e.target.value)} className="premium-input w-full p-4 rounded-xl" />
                   </div>
                   <div>
-                    <label className="flex items-center gap-2 text-sm font-medium text-slate-400 mb-2 font-bold tracking-wider">
+                    <label className="flex items-center gap-2 text-sm font-medium text-[#2C3E50] mb-2 font-bold tracking-wider">
                       End Time (IST)
-                      <input type="checkbox" checked={noEndTime} onChange={e => setNoEndTime(e.target.checked)} className="ml-2 accent-emerald-500" /> No deadline
+                      <input type="checkbox" checked={noEndTime} onChange={e => setNoEndTime(e.target.checked)} className="ml-2 accent-[#007ACC]" /> No deadline
                     </label>
                     <input type="datetime-local" value={endTime} disabled={noEndTime} onChange={(e) => setEndTime(e.target.value)} className={`premium-input w-full p-4 rounded-xl ${noEndTime ? 'opacity-50 cursor-not-allowed' : ''}`} />
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-slate-400 mb-2 font-bold tracking-wider">Generated URL Endpoint</label>
-                  <div className="flex items-center gap-3 bg-slate-900/50 p-4 rounded-xl border border-emerald-900/50">
-                    <span className="text-emerald-400 font-mono text-sm break-all">{contestUrl || 'Type a name to generate URL'}</span>
+                  <label className="block text-sm font-medium text-[#2C3E50] mb-2 font-bold tracking-wider">Generated URL Endpoint</label>
+                  <div className="flex items-center gap-3 bg-[#FFFFFF]/50 p-4 rounded-xl border border-[#2C3E50]/50">
+                    <span className="text-[#007ACC] font-mono text-sm break-all">{contestUrl || 'Type a name to generate URL'}</span>
                   </div>
                 </div>
               </div>
@@ -184,24 +206,24 @@ export default function CreateQuiz() {
         )}
 
         {activeTab === 'questions' && (
-          <motion.div key="questions" initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }} className="space-y-6">
-            <button onClick={addQuizQuestion} className="glass-panel px-6 py-3 rounded-xl flex items-center gap-2 hover:bg-emerald-500/20 text-emerald-400 transition-all font-semibold border border-emerald-500/30">
-              <PlusCircle size={20} /> Add New Question
+          <motion.div key="questions" initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }} className="space-y-6 pb-20">
+            <button onClick={addQuizQuestion} className="w-full bg-[#FFFFFF] border-2 border-dashed border-[#007ACC] py-4 rounded-2xl flex items-center justify-center gap-2 hover:bg-[#F4F4F4] text-[#007ACC] transition-all font-black uppercase tracking-widest text-xs md:hidden mb-6">
+               <PlusCircle size={18} /> Add New Question
             </button>
 
             {questions.map((q, index) => (
-              <div key={index} className="glass-panel p-6 rounded-2xl relative border-l-4 border-l-emerald-500 shadow-xl bg-slate-800/40">
-                <button onClick={() => removeQuestion(index)} className="absolute top-4 right-4 text-slate-500 hover:text-rose-400 transition-colors bg-slate-800/50 p-2 rounded-lg">
+              <div key={index} className="glass-panel p-6 rounded-2xl relative border-l-4 border-l-[#007ACC] shadow-xl bg-[#FFFFFF]/40">
+                <button onClick={() => removeQuestion(index)} className="absolute top-4 right-4 text-[#2C3E50] hover:text-rose-400 transition-colors bg-[#FFFFFF]/50 p-2 rounded-lg">
                   <Trash2 size={20} />
                 </button>
 
                 <div className="mb-6 flex flex-col md:flex-row md:items-center justify-between gap-4 pr-14">
                   <div className="flex items-center gap-4">
-                    <span className="bg-emerald-500/20 text-emerald-400 w-8 h-8 rounded-lg flex items-center justify-center text-sm border border-emerald-500/30 font-bold">{index + 1}</span>
+                    <span className="bg-[#007ACC]/20 text-[#007ACC] w-8 h-8 rounded-lg flex items-center justify-center text-sm border border-[#007ACC]/30 font-bold">{index + 1}</span>
                     <select
                       value={q.questionType}
                       onChange={(e) => updateQuestion(index, 'questionType', e.target.value)}
-                      className="bg-slate-900 border border-slate-700 text-emerald-400 text-sm font-bold px-3 py-1.5 rounded-lg outline-none focus:ring-1 focus:ring-emerald-500"
+                      className="bg-[#FFFFFF] border border-[#4CAF50] text-[#007ACC] text-sm font-bold px-3 py-1.5 rounded-lg outline-none focus:ring-1 focus:ring-[#007ACC]"
                     >
                       <option value="MCQ">Multiple Choice</option>
                       <option value="CHECKBOX">Checkboxes</option>
@@ -210,9 +232,9 @@ export default function CreateQuiz() {
                       <option value="FILL_UP">Fill in the Blanks</option>
                     </select>
                   </div>
-                  <div className="flex items-center gap-3 bg-slate-900 p-2 rounded-lg border border-slate-700">
-                    <span className="text-sm font-medium text-slate-400">Points Value:</span>
-                    <input type="number" value={q.points} onChange={(e) => updateQuestion(index, 'points', e.target.value)} className="bg-slate-800 border-none w-16 p-1 rounded-md text-center text-white font-bold outline-none focus:ring-1 focus:ring-emerald-500" />
+                  <div className="flex items-center gap-3 bg-[#FFFFFF] p-2 rounded-lg border border-[#4CAF50]">
+                    <span className="text-sm font-medium text-[#2C3E50]">Points Value:</span>
+                    <input type="number" value={q.points} onChange={(e) => updateQuestion(index, 'points', e.target.value)} className="bg-[#FFFFFF] border-none w-16 p-1 rounded-md text-center text-white font-bold outline-none focus:ring-1 focus:ring-[#007ACC]" />
                   </div>
                 </div>
 
@@ -226,16 +248,16 @@ export default function CreateQuiz() {
 
                   {q.questionType === 'MCQ' || q.questionType === 'CHECKBOX' ? (
                     <>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-slate-900/40 p-5 rounded-xl border border-slate-700/50">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-[#FFFFFF]/40 p-5 rounded-xl border border-[#4CAF50]/50">
                         <div className="col-span-full flex justify-between items-center mb-2">
-                          <h4 className="text-sm font-bold text-slate-300 uppercase tracking-widest">Options</h4>
-                          <button onClick={() => addOption(index)} className="text-xs text-emerald-400 flex items-center gap-1 hover:text-emerald-300">
+                          <h4 className="text-sm font-bold text-[#2C3E50] uppercase tracking-widest">Options</h4>
+                          <button onClick={() => addOption(index)} className="text-xs text-[#007ACC] flex items-center gap-1 hover:text-[#F0A500]">
                              <PlusCircle size={14} /> Add Option
                           </button>
                         </div>
                         {q.options.map((opt, oIdx) => (
                           <div key={oIdx} className="flex items-center gap-3 relative group">
-                            <span className="font-bold text-slate-500 text-sm w-6 text-center">{['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'][oIdx] || oIdx + 1}</span>
+                            <span className="font-bold text-[#2C3E50] text-sm w-6 text-center">{['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'][oIdx] || oIdx + 1}</span>
                             <input
                               type="text"
                               placeholder={`Option ${['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'][oIdx] || oIdx + 1} value`}
@@ -245,7 +267,7 @@ export default function CreateQuiz() {
                                 newOptions[oIdx] = e.target.value;
                                 updateQuestion(index, 'options', newOptions);
                               }}
-                              className={`premium-input w-full p-3 rounded-lg border transition-colors pr-10 ${q.correctAnswer === opt && opt !== '' ? 'border-emerald-500 bg-emerald-500/10 text-emerald-100' : 'border-slate-700'}`}
+                              className={`premium-input w-full p-3 rounded-lg border transition-colors pr-10 ${q.correctAnswer === opt && opt !== '' ? 'border-[#007ACC] bg-[#007ACC]/10 text-emerald-100' : 'border-[#4CAF50]'}`}
                             />
                             {q.options.length > 2 && (
                                <button onClick={() => removeOption(index, oIdx)} className="absolute right-3 top-1/2 -translate-y-1/2 text-rose-500/50 hover:text-rose-500 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -257,11 +279,11 @@ export default function CreateQuiz() {
                       </div>
 
                       <div className="pt-2">
-                        <label className="block text-sm font-medium text-emerald-400 mb-2">Mark Correct Answer</label>
+                        <label className="block text-sm font-medium text-[#007ACC] mb-2">Mark Correct Answer</label>
                         <select
                           value={q.correctAnswer}
                           onChange={(e) => updateQuestion(index, 'correctAnswer', e.target.value)}
-                          className="premium-input w-full p-3 rounded-lg bg-slate-900 border border-slate-700 focus:border-emerald-500 cursor-pointer font-medium"
+                          className="premium-input w-full p-3 rounded-lg bg-[#FFFFFF] border border-[#4CAF50] focus:border-[#007ACC] cursor-pointer font-medium"
                         >
                           <option value="">-- Choose correct option --</option>
                           {q.options.map((opt, oIdx) => opt && (
@@ -271,22 +293,22 @@ export default function CreateQuiz() {
                       </div>
                     </>
                   ) : q.questionType === 'SHORT_ANSWER' || q.questionType === 'LONG_ANSWER' ? (
-                     <div className="pt-2 border-2 border-dashed border-slate-700/50 rounded-xl p-6 text-center bg-slate-900/40">
-                        <p className="text-slate-400 font-medium mb-2">This is a descriptive {q.questionType === 'SHORT_ANSWER' ? 'short' : 'long'} answer question.</p>
-                        <p className="text-xs text-slate-500 italic">Students will receive a text area to write their response. Manual evaluation is supported.</p>
+                     <div className="pt-2 border-2 border-dashed border-[#4CAF50]/50 rounded-xl p-6 text-center bg-[#FFFFFF]/40">
+                        <p className="text-[#2C3E50] font-medium mb-2">This is a descriptive {q.questionType === 'SHORT_ANSWER' ? 'short' : 'long'} answer question.</p>
+                        <p className="text-xs text-[#2C3E50] italic">Students will receive a text area to write their response. Manual evaluation is supported.</p>
                         <input type="hidden" value={q.correctAnswer = 'MANUAL_EVALUATION'} />
                      </div>
                   ) : (
                     <div className="pt-2">
-                      <label className="block text-sm font-medium text-emerald-400 mb-2">Correct Answer (Fill-up)</label>
+                      <label className="block text-sm font-medium text-[#007ACC] mb-2">Correct Answer (Fill-up)</label>
                       <input
                         type="text"
                         placeholder="Type the exact correct answer here..."
                         value={q.correctAnswer}
                         onChange={(e) => updateQuestion(index, 'correctAnswer', e.target.value)}
-                        className="premium-input w-full p-4 rounded-xl border border-slate-700 focus:border-emerald-500 transition-all font-mono"
+                        className="premium-input w-full p-4 rounded-xl border border-[#4CAF50] focus:border-[#007ACC] transition-all font-mono"
                       />
-                      <p className="text-xs text-slate-500 mt-2 italic">* This field is case-sensitive for evaluation.</p>
+                      <p className="text-xs text-[#2C3E50] mt-2 italic">* This field is case-sensitive for evaluation.</p>
                     </div>
                   )}
                 </div>
@@ -294,7 +316,7 @@ export default function CreateQuiz() {
             ))}
 
             {questions.length === 0 && (
-              <div className="text-center py-20 text-slate-500 border-2 border-dashed border-slate-700/50 rounded-2xl glass-panel">
+              <div className="text-center py-20 text-[#2C3E50] border-2 border-dashed border-[#4CAF50]/50 rounded-2xl glass-panel">
                 <p>No questions added yet. Start by clicking "Add New Question" above.</p>
               </div>
             )}
@@ -303,21 +325,33 @@ export default function CreateQuiz() {
       </AnimatePresence>
 
       {/* FIXED FOOTER FIX: Floating container with pointer-events-none */}
-      <div className="fixed bottom-0 left-0 right-0 p-8 z-50 pointer-events-none flex justify-end items-center gap-4 bg-gradient-to-t from-[#0a0f1a] to-transparent">
+      <div className="fixed bottom-6 right-6 md:bottom-10 md:right-10 z-50 flex justify-end items-center gap-4 pointer-events-none">
         {publishSuccess && (
-          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="pointer-events-auto text-emerald-400 flex items-center gap-2 font-bold bg-slate-900 border border-emerald-500/50 px-6 py-3 rounded-2xl shadow-2xl backdrop-blur-xl">
+          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="pointer-events-auto text-[#007ACC] flex items-center gap-2 font-bold bg-[#FFFFFF] border border-[#007ACC]/50 px-6 py-3 rounded-2xl shadow-xl backdrop-blur-xl">
             <CheckCircle2 size={18} /> Quiz Saved Successfully!
           </motion.div>
         )}
         <button
           onClick={handlePublish}
           disabled={!contestName || isPublishing || questions.length === 0}
-          className={`pointer-events-auto btn-primary px-10 py-5 rounded-[1.5rem] font-black tracking-widest uppercase text-xs flex items-center gap-3 transition-all shadow-2xl ${(!contestName || isPublishing || questions.length === 0) ? 'opacity-50 cursor-not-allowed grayscale' : 'hover:-translate-y-2 hover:scale-[1.02] active:scale-95 shadow-emerald-500/40'}`}
+          className={`pointer-events-auto btn-primary px-10 py-5 rounded-[1.5rem] font-black tracking-widest uppercase text-xs flex items-center gap-3 transition-all shadow-xl ${(!contestName || isPublishing || questions.length === 0) ? 'opacity-50 cursor-not-allowed grayscale' : 'hover:-translate-y-2 hover:scale-[1.02] active:scale-95 shadow-[#007ACC]/40'}`}
         >
-          {isPublishing ? <div className="w-5 h-5 border-2 border-slate-300 border-t-white rounded-full animate-spin" /> : <Save size={18} />}
+          {isPublishing ? <div className="w-5 h-5 border-2 border-[#4CAF50] border-t-white rounded-full animate-spin" /> : <Save size={18} />}
           {isPublishing ? 'Publishing...' : 'Save & Publish Quiz'}
         </button>
       </div>
+
+      <AnimatePresence>
+        {toastMessage && (
+          <motion.div initial={{ opacity: 0, y: 50 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 50 }} className="fixed bottom-10 left-1/2 -translate-x-1/2 z-[100] pointer-events-auto">
+            <div className={`px-6 py-3 rounded-xl shadow-lg font-bold flex items-center gap-2 ${toastMessage.type === 'error' ? 'bg-red-50 text-red-700 border border-red-200' : 'bg-green-50 text-green-700 border border-green-200'}`}>
+              <CheckCircle2 size={18} className={toastMessage.type === 'error' ? 'hidden' : 'block'} />
+              {toastMessage.title}
+              <button onClick={() => setToastMessage(null)} className="ml-4 opacity-70 hover:opacity-100 font-black">X</button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
