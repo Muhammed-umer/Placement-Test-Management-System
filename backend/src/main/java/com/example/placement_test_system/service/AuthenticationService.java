@@ -59,4 +59,11 @@ public class AuthenticationService {
                 .mustChangePassword(user.isMustChangePassword())
                 .build();
     }
+
+    public void resetPassword(String email, String newPassword) {
+        User user = repository.findByEmail(email).orElseThrow();
+        user.setPassword(passwordEncoder.encode(newPassword));
+        user.setMustChangePassword(false);
+        repository.save(user);
+    }
 }

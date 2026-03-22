@@ -32,10 +32,19 @@ public class ProfileController {
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
         User user = userRepository.findByEmail(email).orElseThrow();
         
+        if (updates.containsKey("fullName")) user.setFullName(updates.get("fullName"));
         if (updates.containsKey("githubLink")) user.setGithubLink(updates.get("githubLink"));
         if (updates.containsKey("linkedinLink")) user.setLinkedinLink(updates.get("linkedinLink"));
+        if (updates.containsKey("leetcodeLink")) user.setLeetcodeLink(updates.get("leetcodeLink"));
         if (updates.containsKey("projectShowcase")) user.setProjectShowcase(updates.get("projectShowcase"));
         if (updates.containsKey("achievements")) user.setAchievements(updates.get("achievements"));
+        
+        if (updates.containsKey("gender")) user.setGender(updates.get("gender"));
+        if (updates.containsKey("dob")) user.setDob(updates.get("dob"));
+        if (updates.containsKey("registrationNumber")) user.setRegistrationNumber(updates.get("registrationNumber"));
+        if (updates.containsKey("phone")) user.setPhone(updates.get("phone"));
+        if (updates.containsKey("batch")) user.setBatch(updates.get("batch"));
+        if (updates.containsKey("department")) user.setDepartment(updates.get("department"));
 
         userRepository.save(user);
         return ResponseEntity.ok(user);

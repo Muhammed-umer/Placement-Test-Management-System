@@ -27,4 +27,27 @@ public class AdminController {
             return ResponseEntity.internalServerError().body("Error: " + e.getMessage());
         }
     }
+
+    @GetMapping("/students")
+    @PreAuthorize("hasAnyRole('ROLE_ADMIN', 'ROLE_SUPER_ADMIN')")
+    public ResponseEntity<java.util.List<com.example.placement_test_system.model.User>> getAllStudents() {
+        return ResponseEntity.ok(adminService.getAllStudents());
+    }
+
+    @PostMapping("/create-admin")
+    @PreAuthorize("hasRole('ROLE_SUPER_ADMIN')")
+    public ResponseEntity<String> createAdmin(@RequestBody java.util.Map<String, String> payload) {
+        try {
+            adminService.createAdmin(payload.get("email"));
+            return ResponseEntity.ok("Admin created successfully.");
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body("Error: " + e.getMessage());
+        }
+    }
+
+    @GetMapping("/admins")
+    @PreAuthorize("hasRole('ROLE_SUPER_ADMIN')")
+    public ResponseEntity<java.util.List<com.example.placement_test_system.model.User>> getAllAdmins() {
+        return ResponseEntity.ok(adminService.getAllAdmins());
+    }
 }

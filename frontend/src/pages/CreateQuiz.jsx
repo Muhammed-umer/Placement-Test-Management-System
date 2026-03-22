@@ -1,7 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  Globe, Save, PlusCircle, Trash2, ListChecks, CheckCircle2, ArrowLeft,
+  Globe, Save, PlusCircle, Trash2, ListChecks, CheckCircle2, ArrowLeft, ArrowRight, RefreshCw, UploadCloud,
+  Menu, X, LayoutDashboard, Code, History, Users
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
@@ -11,12 +12,14 @@ export default function CreateQuiz() {
   const [isPublishing, setIsPublishing] = useState(false);
   const [publishSuccess, setPublishSuccess] = useState(false);
   const [toastMessage, setToastMessage] = useState(null);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   const [contestName, setContestName] = useState('');
   const [startTime, setStartTime] = useState('');
   const [endTime, setEndTime] = useState('');
   const [noEndTime, setNoEndTime] = useState(false);
   const [contestUrl, setContestUrl] = useState('');
+  const [maxAttempts, setMaxAttempts] = useState(1);
 
   const [questions, setQuestions] = useState([]);
 
@@ -34,6 +37,30 @@ export default function CreateQuiz() {
       return () => clearTimeout(timer);
     }
   }, [toastMessage]);
+
+  const fileInputRef = useRef(null);
+
+  const handleBulkUpload = (event) => {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const data = JSON.parse(e.target.result);
+        if (Array.isArray(data)) {
+          setQuestions([...questions, ...data]);
+          setToastMessage("Successfully bulk imported questions!");
+        } else {
+          setToastMessage("Invalid JSON format. Must be an array of questions.");
+        }
+      } catch (err) {
+        setToastMessage("Failed to parse JSON file.");
+      }
+    };
+    reader.readAsText(file);
+    event.target.value = null; // reset input
+  };
 
   const addQuizQuestion = () => {
     setQuestions([...questions, {
@@ -93,8 +120,9 @@ export default function CreateQuiz() {
       type: 'QUIZ',
       totalPoints: totalPoints || 0,
       durationMinutes: durationMinutes || 60,
-      startTime: startTime ? new Date(startTime).toISOString() : null,
-      endTime: (endTime && !noEndTime) ? new Date(endTime).toISOString() : null,
+      maxAttempts: Number(maxAttempts) || 1,
+      startTime: startTime ? (startTime.length === 16 ? startTime + ':00' : startTime) : null,
+      endTime: (endTime && !noEndTime) ? (endTime.length === 16 ? endTime + ':00' : endTime) : null,
       url: contestUrl,
       questions: questions.map(q => ({
         ...q,
@@ -128,17 +156,62 @@ export default function CreateQuiz() {
   };
 
   return (
-    <div className="min-h-screen pt-12 p-4 md:p-8 max-w-5xl mx-auto z-10 relative text-[#2C3E50] font-sans pb-48">
-      {/* STICKY TOPBAR */}
-      <div className="sticky top-0 z-50 bg-[#F4F4F4] pt-8 pb-4 border-b-2 border-[#4CAF50]/30 mb-8 flex flex-col md:flex-row md:items-center justify-between gap-4 px-4 -mx-4 shadow-sm md:px-8 md:-mx-8">
-        <div>
-          <button onClick={() => navigate('/admin')} className="text-[#007ACC] flex items-center gap-1 mb-2 hover:underline text-sm font-black uppercase tracking-wider">
-            <ArrowLeft size={16} /> Overview
-          </button>
-          <h1 className="text-2xl md:text-4xl font-extrabold text-[#2C3E50] tracking-tight flex items-center gap-3">
-            <ListChecks size={28} className="text-[#007ACC]" /> Quiz Builder
-          </h1>
+    <div className="flex min-h-screen bg-slate-50 text-[#2C3E50] font-sans">
+      {/* Mobile menu button */}
+      <button 
+        onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+        className="md:hidden fixed top-4 right-4 z-50 p-2 bg-white rounded-lg shadow-md border border-slate-200"
+      >
+        {isSidebarOpen ? <X size={24} className="text-slate-600"/> : <Menu size={24} className="text-slate-600"/>}
+      </button>
+
+      {/* Sidebar */}
+      <aside className={`fixed inset-y-0 left-0 z-40 w-64 bg-white border-r border-slate-200 transform transition-transform duration-300 ease-in-out md:translate-x-0 md:static md:w-72 flex flex-col ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+        <div className="flex items-center justify-center h-20 border-b border-slate-100">
+          <h2 className="text-2xl font-black text-brand-600 tracking-tight">Admin<span className="text-[#2C3E50]">Panel</span></h2>
         </div>
+        <nav className="flex-1 px-4 py-6 space-y-3 overflow-y-auto">
+          <button onClick={() => navigate('/admin')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition-all text-[#2C3E50]/70 hover:text-[#2C3E50] hover:bg-[#F4F4F4]`}>
+            <LayoutDashboard size={20} /> Overview
+          </button>
+          <button onClick={() => navigate('/admin')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition-all text-[#2C3E50]/70 hover:text-[#2C3E50] hover:bg-[#F4F4F4]`}>
+            <Code size={20} /> Coding Contests
+          </button>
+          <button onClick={() => {}} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition-all bg-[#007ACC] text-white shadow-lg shadow-[#007ACC]/30`}>
+            <ListChecks size={20} /> Quizzes
+          </button>
+          <button onClick={() => navigate('/admin')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition-all text-[#2C3E50]/70 hover:text-[#2C3E50] hover:bg-[#F4F4F4]`}>
+            <History size={20} /> History
+          </button>
+          <button onClick={() => navigate('/admin')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition-all text-[#2C3E50]/70 hover:text-[#2C3E50] hover:bg-[#F4F4F4]`}>
+            <Users size={20} /> Onboard Students
+          </button>
+          <div className="pt-6 mt-4 border-t-2 border-[#F4F4F4] flex justify-center gap-4">
+             <button onClick={() => window.history.back()} className="p-3 rounded-xl bg-[#F4F4F4] text-[#2C3E50] hover:bg-[#007ACC] hover:text-[#FFFFFF] transition-colors shadow-sm cursor-pointer" title="Go Back">
+                <ArrowLeft size={18} />
+             </button>
+             <button onClick={() => window.location.reload()} className="p-3 rounded-xl bg-[#F4F4F4] text-[#2C3E50] hover:bg-[#007ACC] hover:text-[#FFFFFF] transition-colors shadow-sm cursor-pointer" title="Refresh">
+                <RefreshCw size={18} />
+             </button>
+             <button onClick={() => window.history.forward()} className="p-3 rounded-xl bg-[#F4F4F4] text-[#2C3E50] hover:bg-[#007ACC] hover:text-[#FFFFFF] transition-colors shadow-sm cursor-pointer" title="Go Forward">
+                <ArrowRight size={18} />
+             </button>
+          </div>
+        </nav>
+      </aside>
+
+      <main className="flex-1 p-6 md:p-10 w-full overflow-y-auto max-h-screen relative z-10 pb-20">
+        <div className="max-w-5xl mx-auto">
+          {/* STICKY TOPBAR */}
+          <div className="sticky top-0 z-50 bg-[#F4F4F4]/90 backdrop-blur-sm pt-4 pb-4 border-b-2 border-[#4CAF50]/30 mb-8 flex flex-col md:flex-row md:items-center justify-between gap-4 px-4 -mx-4 shadow-sm md:px-8 md:-mx-8">
+            <div>
+              <button onClick={() => navigate('/admin')} className="text-[#007ACC] flex items-center gap-1 mb-2 hover:underline text-sm font-black uppercase tracking-wider">
+                <ArrowLeft size={16} /> Overview
+              </button>
+              <h1 className="text-2xl md:text-4xl font-extrabold text-[#2C3E50] tracking-tight flex items-center gap-3">
+                <ListChecks size={28} className="text-[#007ACC]" /> Quiz Builder
+              </h1>
+            </div>
 
         <div className="flex flex-col sm:flex-row items-center gap-4">
           <div className="flex items-center bg-[#FFFFFF] p-1.5 rounded-xl border-2 border-[#4CAF50] shadow-sm">
@@ -155,13 +228,23 @@ export default function CreateQuiz() {
           
           <AnimatePresence>
             {activeTab === 'questions' && (
-              <motion.button 
-                initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.9 }}
-                onClick={addQuizQuestion} 
-                className="bg-[#007ACC] text-white px-5 py-2.5 rounded-xl flex items-center gap-2 hover:bg-[#F0A500] transition-colors font-black uppercase tracking-widest text-xs hidden md:flex shadow-lg shadow-[#007ACC]/30"
-              >
-                <PlusCircle size={18} /> Add
-              </motion.button>
+              <div className="flex gap-2">
+                <input type="file" accept=".json" ref={fileInputRef} onChange={handleBulkUpload} className="hidden" />
+                <motion.button 
+                  initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.9 }}
+                  onClick={() => fileInputRef.current.click()} 
+                  className="bg-[#FFFFFF] text-[#007ACC] border-2 border-[#007ACC] px-5 py-2.5 rounded-xl flex items-center gap-2 hover:bg-[#F4F4F4] transition-colors font-black uppercase tracking-widest text-xs shadow-lg shadow-[#007ACC]/20"
+                >
+                  <UploadCloud size={18} /> Bulk JSON
+                </motion.button>
+                <motion.button 
+                  initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.9 }}
+                  onClick={addQuizQuestion} 
+                  className="bg-[#007ACC] text-white px-5 py-2.5 rounded-xl flex items-center gap-2 hover:bg-[#F0A500] transition-colors font-black uppercase tracking-widest text-xs shadow-lg shadow-[#007ACC]/30"
+                >
+                  <PlusCircle size={18} /> Add
+                </motion.button>
+              </div>
             )}
           </AnimatePresence>
         </div>
@@ -180,7 +263,11 @@ export default function CreateQuiz() {
                   <input type="text" value={contestName} onChange={(e) => setContestName(e.target.value)} placeholder="e.g., Midterm Evaluation" className="premium-input w-full p-4 rounded-xl text-lg font-semibold" />
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                  <div>
+                    <label className="block text-sm font-medium text-[#2C3E50] mb-2 font-bold tracking-wider">Max Valid Attempts</label>
+                    <input type="number" min="1" value={maxAttempts} onChange={(e) => setMaxAttempts(Math.max(1, e.target.value))} className="premium-input w-full p-4 rounded-xl text-lg" />
+                  </div>
                   <div>
                     <label className="block text-sm font-medium text-[#2C3E50] mb-2 font-bold tracking-wider">Start Time (IST)</label>
                     <input type="datetime-local" value={startTime} onChange={(e) => setStartTime(e.target.value)} className="premium-input w-full p-4 rounded-xl" />
@@ -220,21 +307,26 @@ export default function CreateQuiz() {
                 <div className="mb-6 flex flex-col md:flex-row md:items-center justify-between gap-4 pr-14">
                   <div className="flex items-center gap-4">
                     <span className="bg-[#007ACC]/20 text-[#007ACC] w-8 h-8 rounded-lg flex items-center justify-center text-sm border border-[#007ACC]/30 font-bold">{index + 1}</span>
-                    <select
-                      value={q.questionType}
-                      onChange={(e) => updateQuestion(index, 'questionType', e.target.value)}
-                      className="bg-[#FFFFFF] border border-[#4CAF50] text-[#007ACC] text-sm font-bold px-3 py-1.5 rounded-lg outline-none focus:ring-1 focus:ring-[#007ACC]"
-                    >
-                      <option value="MCQ">Multiple Choice</option>
-                      <option value="CHECKBOX">Checkboxes</option>
-                      <option value="SHORT_ANSWER">Short Answer</option>
-                      <option value="LONG_ANSWER">Long Paragraph</option>
-                      <option value="FILL_UP">Fill in the Blanks</option>
-                    </select>
+                    <div className="relative">
+                      <select
+                        value={q.questionType}
+                        onChange={(e) => updateQuestion(index, 'questionType', e.target.value)}
+                        className="appearance-none bg-[#FFFFFF] border-2 border-[#4CAF50] text-[#007ACC] text-sm font-bold pl-3 pr-8 py-1.5 rounded-lg outline-none focus:ring-4 focus:ring-[#007ACC]/20 cursor-pointer shadow-sm hover:border-[#007ACC] transition-all"
+                      >
+                        <option value="MCQ">Multiple Choice</option>
+                        <option value="CHECKBOX">Checkboxes</option>
+                        <option value="SHORT_ANSWER">Short Answer</option>
+                        <option value="LONG_ANSWER">Long Paragraph</option>
+                        <option value="FILL_UP">Fill in the Blanks</option>
+                      </select>
+                      <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-[#007ACC]">
+                        <svg className="w-4 h-4 fill-current" viewBox="0 0 20 20"><path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"/></svg>
+                      </div>
+                    </div>
                   </div>
                   <div className="flex items-center gap-3 bg-[#FFFFFF] p-2 rounded-lg border border-[#4CAF50]">
                     <span className="text-sm font-medium text-[#2C3E50]">Points Value:</span>
-                    <input type="number" value={q.points} onChange={(e) => updateQuestion(index, 'points', e.target.value)} className="bg-[#FFFFFF] border-none w-16 p-1 rounded-md text-center text-white font-bold outline-none focus:ring-1 focus:ring-[#007ACC]" />
+                    <input type="number" value={q.points} onChange={(e) => updateQuestion(index, 'points', e.target.value)} className="bg-[#FFFFFF] border-none w-16 p-1 rounded-md text-center text-[#007ACC] font-bold outline-none focus:ring-1 focus:ring-[#007ACC]" />
                   </div>
                 </div>
 
@@ -280,16 +372,21 @@ export default function CreateQuiz() {
 
                       <div className="pt-2">
                         <label className="block text-sm font-medium text-[#007ACC] mb-2">Mark Correct Answer</label>
-                        <select
-                          value={q.correctAnswer}
-                          onChange={(e) => updateQuestion(index, 'correctAnswer', e.target.value)}
-                          className="premium-input w-full p-3 rounded-lg bg-[#FFFFFF] border border-[#4CAF50] focus:border-[#007ACC] cursor-pointer font-medium"
-                        >
-                          <option value="">-- Choose correct option --</option>
-                          {q.options.map((opt, oIdx) => opt && (
-                            <option key={oIdx} value={opt}>Option {['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'][oIdx] || oIdx + 1} ({opt})</option>
-                          ))}
-                        </select>
+                        <div className="relative">
+                          <select
+                            value={q.correctAnswer}
+                            onChange={(e) => updateQuestion(index, 'correctAnswer', e.target.value)}
+                            className="appearance-none premium-input w-full pl-4 pr-10 py-3 rounded-lg bg-[#FFFFFF] border-2 border-[#4CAF50] focus:border-[#007ACC] focus:ring-4 focus:ring-[#007ACC]/20 cursor-pointer font-medium transition-all shadow-sm"
+                          >
+                            <option value="">-- Choose correct option --</option>
+                            {q.options.map((opt, oIdx) => opt && (
+                              <option key={oIdx} value={opt}>Option {['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'][oIdx] || oIdx + 1} ({opt})</option>
+                            ))}
+                          </select>
+                          <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-[#007ACC]">
+                            <svg className="w-5 h-5 fill-current" viewBox="0 0 20 20"><path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"/></svg>
+                          </div>
+                        </div>
                       </div>
                     </>
                   ) : q.questionType === 'SHORT_ANSWER' || q.questionType === 'LONG_ANSWER' ? (
@@ -352,6 +449,8 @@ export default function CreateQuiz() {
           </motion.div>
         )}
       </AnimatePresence>
+      </div>
+      </main>
     </div>
   );
 }

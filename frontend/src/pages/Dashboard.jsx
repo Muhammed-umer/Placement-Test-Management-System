@@ -3,7 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { 
   User as UserIcon, Github, Linkedin, Trophy, Code2, Save, Bell, 
   ChevronRight, Activity, Edit3, X, Calendar, Hash, Phone, 
-  Building2, Globe, ListChecks, LayoutDashboard, Menu, PlusCircle, Trash2
+  Building2, Globe, ListChecks, LayoutDashboard, Menu, PlusCircle, Trash2, ArrowLeft, ArrowRight, RefreshCw
 } from 'lucide-react';
 import { Stomp } from '@stomp/stompjs';
 import SockJS from 'sockjs-client';
@@ -99,9 +99,14 @@ export default function Dashboard() {
     } catch (e) { }
   };
 
+  const [currentTime, setCurrentTime] = useState(new Date());
+
   useEffect(() => {
     fetchProfile();
     fetchAssessments();
+
+    // Ticking clock for live timers
+    const timer = setInterval(() => setCurrentTime(new Date()), 1000);
 
     const socket = new SockJS('http://localhost:8081/ws');
     const stompClient = Stomp.over(socket);
@@ -116,6 +121,7 @@ export default function Dashboard() {
     });
 
     return () => {
+      clearInterval(timer);
       if (stompClient.connected) stompClient.disconnect();
     };
   }, []);
@@ -185,18 +191,29 @@ export default function Dashboard() {
           <h2 className="text-[16px] font-black text-[#2C3E50] truncate w-full text-center">{profile.fullName || 'Student Portal'}</h2>
         </div>
 
-        <nav className="flex-1 px-4 py-6 space-y-4 overflow-y-auto">
-          <button onClick={() => {navigate('/dashboard'); setIsSidebarOpen(false);}} className={`w-full flex items-center gap-3 px-4 py-4 rounded-xl font-bold transition-all ${!isProfileRoute ? 'bg-[#007ACC] text-[#2C3E50] shadow-lg shadow-[#007ACC]/30' : 'text-[#2C3E50] hover:bg-[#F4F4F4]'}`}>
+        <nav className="flex-1 px-4 py-6 space-y-3 overflow-y-auto">
+          <button onClick={() => {navigate('/dashboard'); setIsSidebarOpen(false);}} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition-all ${!isProfileRoute ? 'bg-[#007ACC] text-white shadow-lg shadow-[#007ACC]/30' : 'text-[#2C3E50]/70 hover:text-[#2C3E50] hover:bg-[#F4F4F4]'}`}>
             <LayoutDashboard size={20} /> Dashboard
           </button>
           
-          <button onClick={() => {navigate('/profile'); setIsSidebarOpen(false);}} className={`w-full flex items-center gap-3 px-4 py-4 rounded-xl font-bold transition-all ${isProfileRoute ? 'bg-[#007ACC] text-[#2C3E50] shadow-lg shadow-[#007ACC]/30' : 'text-[#2C3E50] hover:bg-[#F4F4F4]'}`}>
+          <button onClick={() => {navigate('/profile'); setIsSidebarOpen(false);}} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition-all ${isProfileRoute ? 'bg-[#007ACC] text-white shadow-lg shadow-[#007ACC]/30' : 'text-[#2C3E50]/70 hover:text-[#2C3E50] hover:bg-[#F4F4F4]'}`}>
             <UserIcon size={20} /> My Profile
           </button>
           
           <div className="pt-6 mt-6 border-t-2 border-[#F4F4F4]">
-             <button onClick={() => {navigate('/login'); setIsSidebarOpen(false);}} className="w-full flex items-center gap-3 px-4 py-4 rounded-xl font-bold text-red-500 hover:bg-red-50 hover:text-red-700 transition-colors">
+             <button onClick={() => {navigate('/login'); setIsSidebarOpen(false);}} className="w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold text-red-500 hover:bg-red-50 hover:text-red-700 transition-colors">
                <X size={20} /> Sign Out
+             </button>
+          </div>
+          <div className="pt-6 mt-2 flex justify-center gap-4">
+             <button onClick={() => window.history.back()} className="p-3 rounded-xl bg-[#F4F4F4] text-[#2C3E50] hover:bg-[#007ACC] hover:text-[#FFFFFF] transition-colors shadow-sm" title="Go Back">
+                <ArrowLeft size={18} />
+             </button>
+             <button onClick={() => window.location.reload()} className="p-3 rounded-xl bg-[#F4F4F4] text-[#2C3E50] hover:bg-[#007ACC] hover:text-[#FFFFFF] transition-colors shadow-sm" title="Refresh">
+                <RefreshCw size={18} />
+             </button>
+             <button onClick={() => window.history.forward()} className="p-3 rounded-xl bg-[#F4F4F4] text-[#2C3E50] hover:bg-[#007ACC] hover:text-[#FFFFFF] transition-colors shadow-sm" title="Go Forward">
+                <ArrowRight size={18} />
              </button>
           </div>
         </nav>
@@ -253,31 +270,83 @@ export default function Dashboard() {
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 relative z-10">
                 <AnimatePresence>
-                  {activeAssessments.map((assessment) => (
-                    <motion.div 
-                      key={assessment.id} 
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      className="bg-[#FFFFFF] rounded-2xl border-2 border-[#4CAF50] p-6 flex flex-col justify-between hover:border-[#007ACC] hover:shadow-xl hover:shadow-[#007ACC]/20 transition-all cursor-pointer group"
-                      onClick={() => navigate(`/assessment/${assessment.id}`)}
-                    >
-                      <div className="mb-6">
-                        <div className="w-16 h-16 bg-[#F4F4F4] border-2 border-[#4CAF50] rounded-xl flex items-center justify-center mb-6 text-[#007ACC] group-hover:bg-[#007ACC] group-hover:text-[#2C3E50] transition-colors">
-                          {assessment.type === 'QUIZ' ? <ListChecks size={32} /> : <Code2 size={32} />}
+                  {[...activeAssessments].sort((a, b) => {
+                     const isAClosed = a.endTime ? new Date(a.endTime) < currentTime : false;
+                     const isBClosed = b.endTime ? new Date(b.endTime) < currentTime : false;
+                     if (isAClosed === isBClosed) return 0;
+                     return isAClosed ? 1 : -1;
+                  }).map((assessment) => {
+                    const startTime = assessment.startTime ? new Date(assessment.startTime) : null;
+                    const endTime = assessment.endTime ? new Date(assessment.endTime) : null;
+                    
+                    const isNotStarted = startTime && startTime > currentTime;
+                    const isClosed = endTime && endTime < currentTime;
+                    
+                    const getTimeRemaining = (targetDate) => {
+                      const diff = targetDate - currentTime;
+                      if (diff <= 0) return "00:00:00";
+                      const h = Math.floor(diff / 3600000).toString().padStart(2, '0');
+                      const m = Math.floor((diff % 3600000) / 60000).toString().padStart(2, '0');
+                      const s = Math.floor((diff % 60000) / 1000).toString().padStart(2, '0');
+                      return `${h}:${m}:${s}`;
+                    };
+
+                    return (
+                      <motion.div 
+                        key={assessment.id} 
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className={`bg-[#FFFFFF] rounded-2xl border-2 p-6 flex flex-col justify-between transition-all relative group ${
+                          isClosed 
+                          ? 'border-gray-200 opacity-75 grayscale-[0.5] cursor-not-allowed' 
+                          : isNotStarted 
+                            ? 'border-brand-100 opacity-90 cursor-pointer'
+                            : 'border-[#4CAF50] hover:border-[#007ACC] hover:shadow-xl hover:shadow-[#007ACC]/20 cursor-pointer'
+                        }`}
+                        onClick={() => !isClosed && navigate(`/assessment/${assessment.id}`)}
+                      >
+                        <div className="mb-6">
+                          <div className={`w-16 h-16 border-2 rounded-xl flex items-center justify-center mb-6 transition-colors ${
+                            isClosed 
+                            ? 'bg-gray-100 border-gray-300 text-gray-400' 
+                            : isNotStarted
+                              ? 'bg-brand-50 border-brand-200 text-brand-400'
+                              : 'bg-[#F4F4F4] border-[#4CAF50] text-[#007ACC] group-hover:bg-[#007ACC] group-hover:text-[#FFFFFF]'
+                          }`}>
+                            {assessment.type === 'QUIZ' ? <ListChecks size={32} /> : <Code2 size={32} />}
+                          </div>
+                          
+                          <div className="flex justify-between items-start mb-2">
+                            <h4 className="text-xl font-black text-[#2C3E50] line-clamp-1">{assessment.title}</h4>
+                            <span className={`text-[10px] font-black uppercase tracking-tighter px-2 py-1 rounded-md border-2 ${
+                              isClosed 
+                              ? 'bg-red-50 border-red-200 text-red-500' 
+                              : isNotStarted
+                                ? 'bg-amber-50 border-amber-200 text-amber-600'
+                                : 'bg-green-50 border-green-200 text-green-600'
+                            }`}>
+                              {isClosed ? 'Closed' : isNotStarted ? 'Upcoming' : 'Open'}
+                            </span>
+                          </div>
+
+                          <div className="text-xs text-[#2C3E50] flex flex-wrap gap-2 font-bold tracking-wider uppercase mt-4">
+                             <span className={`inline-block px-4 py-2 rounded-lg border self-start ${isClosed ? 'bg-gray-100 border-gray-200' : 'bg-[#F4F4F4] border-[#4CAF50]'}`}>{assessment.type}</span>
+                             <span className="flex items-center gap-1 px-3 py-2 rounded-lg bg-[#F4F4F4] border border-[#F4F4F4] text-[#2C3E50]">
+                               {isClosed ? 'Expired' : isNotStarted ? `Starts In: ${getTimeRemaining(startTime)}` : `Time Left: ${getTimeRemaining(endTime)}`}
+                             </span>
+                             <span className="flex items-center gap-1 px-3 py-2 rounded-lg bg-[#F4F4F4] border border-[#F4F4F4]">🎯 {assessment.totalPoints || 0} PTS</span>
+                          </div>
                         </div>
-                        <h4 className="text-xl font-black text-[#2C3E50] mb-2 line-clamp-1">{assessment.title}</h4>
-                        <div className="text-xs text-[#2C3E50] flex flex-col gap-3 font-bold tracking-wider uppercase mt-4">
-                           <span className="inline-block px-4 py-2 rounded-lg bg-[#F4F4F4] border border-[#4CAF50] self-start">{assessment.type}</span>
-                           <span className="flex items-center gap-2">⏳ {assessment.durationMinutes || 60} MINS</span>
-                           <span className="flex items-center gap-2">🎯 {assessment.totalPoints || 0} PTS</span>
+
+                        <div className={`pt-4 border-t-2 border-[#F4F4F4] flex items-center justify-between font-black text-sm uppercase tracking-widest ${
+                          isClosed ? 'text-gray-400' : isNotStarted ? 'text-amber-500' : 'text-[#007ACC]'
+                        }`}>
+                          <span>{isClosed ? 'Time Expired' : isNotStarted ? 'Enter Waiting Room' : 'Launch Session'}</span>
+                          {!isClosed && <ChevronRight size={24} className="group-hover:translate-x-2 transition-transform" />}
                         </div>
-                      </div>
-                      <div className="pt-4 border-t-2 border-[#F4F4F4] flex items-center justify-between text-[#007ACC] font-black text-sm uppercase tracking-widest">
-                        <span>Launch Session</span>
-                        <ChevronRight size={24} className="group-hover:translate-x-2 transition-transform" />
-                      </div>
-                    </motion.div>
-                  ))}
+                      </motion.div>
+                    );
+                  })}
                 </AnimatePresence>
               </div>
             )}

@@ -42,6 +42,7 @@ export default function Login() {
       
       localStorage.setItem('token', data.token);
       localStorage.setItem('mustChangePassword', data.mustChangePassword);
+      localStorage.setItem('role', data.role);
       
       if (data.role === 'ROLE_ADMIN' || data.role === 'ROLE_SUPER_ADMIN') {
         navigate('/admin');

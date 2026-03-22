@@ -22,6 +22,9 @@ public class Assessment {
 
     private int totalPoints;
     private int durationMinutes;
+    private String batch; // Target specific student groups
+    @Column(columnDefinition = "integer default 1")
+    private int maxAttempts = 1; // New feature: restrict maximum number of test attempts
 
     private LocalDateTime startTime;
     private LocalDateTime endTime;

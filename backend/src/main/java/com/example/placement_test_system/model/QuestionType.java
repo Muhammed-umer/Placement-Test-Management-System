@@ -1,5 +1,5 @@
 package com.example.placement_test_system.model;
 
 public enum QuestionType {
-    MCQ, FILL_UP, CODING
+    MCQ, FILL_UP, SHORT_ANSWER, LONG_ANSWER, CHECKBOX, CODING
 }

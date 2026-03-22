@@ -15,7 +15,7 @@ public class Question {
     private Long id;
 
     @Enumerated(EnumType.STRING)
-    private QuestionType questionType; // MCQ, FILL_UP, or CODING
+    private com.example.placement_test_system.model.QuestionType questionType; // MCQ, FILL_UP, SHORT_ANSWER, LONG_ANSWER, CHECKBOX, or CODING
 
     private String title;
 

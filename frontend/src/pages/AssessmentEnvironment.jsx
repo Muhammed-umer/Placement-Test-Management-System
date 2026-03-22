@@ -45,6 +45,17 @@ export default function AssessmentEnvironment() {
 
   const containerRef = useRef(null);
   const stompClient = useRef(null);
+  const focusTimerRef = useRef(null);
+
+  useEffect(() => {
+    if (questions.length > 0 && questions[currentQuestionIdx]?.status === 'unvisited') {
+      setQuestions(prev => {
+        const up = [...prev];
+        up[currentQuestionIdx] = { ...up[currentQuestionIdx], status: 'visited' };
+        return up;
+      });
+    }
+  }, [currentQuestionIdx]);
 
   // Sync internal clock every second for the timer
   useEffect(() => {
@@ -60,14 +71,25 @@ export default function AssessmentEnvironment() {
         .then(data => {
           setAssessment(data);
           setQuestions((data.questions || []).map(q => ({ ...q, status: 'unvisited' })));
-          
-          let filtered = JUDGE0_LANGUAGES;
-          if (data.allowedLanguages?.length > 0) {
-            filtered = JUDGE0_LANGUAGES.filter(l => data.allowedLanguages.includes(l.value));
+          if (data.type === 'CODING' && data.allowedLanguages) {
+            const allowed = JUDGE0_LANGUAGES.filter(l => data.allowedLanguages.includes(l.value));
+            if (allowed.length > 0) {
+              setAvailableLanguages(allowed);
+              setLanguage(allowed[0]);
+              
+              // Restore Auto-saved code
+              const savedCode = localStorage.getItem(`assessment_${id}_code`);
+              if (savedCode) setCode(savedCode);
+              else setCode(CODE_BOILERPLATES[allowed[0].value]);
+            }
           }
-          setAvailableLanguages(filtered);
-          if (filtered.length > 0) {
-            setLanguage(filtered[0]);
+          
+          // Restore Auto-saved quiz answers
+          if (data.type === 'QUIZ') {
+             const savedAnswers = localStorage.getItem(`assessment_${id}_quizAnswers`);
+             if (savedAnswers) {
+                try { setQuizAnswers(JSON.parse(savedAnswers)); } catch (e) {}
+             }
           }
         })
         .catch(console.error);
@@ -169,7 +191,20 @@ export default function AssessmentEnvironment() {
         e.preventDefault();
       }
     };
-    const handleVisibility = () => { if (document.hidden) handleViolation('Tab Switching'); };
+    const handleVisibility = () => { 
+      if (document.hidden) {
+        handleViolation('Tab Switching Detected! Auto-submit in 10 seconds if not restored.');
+        focusTimerRef.current = setTimeout(() => {
+          submitCode(true);
+        }, 10000);
+      } else {
+        if (focusTimerRef.current) {
+          clearTimeout(focusTimerRef.current);
+          focusTimerRef.current = null;
+          setToastMessage({ title: 'Focus Restored', type: 'success' });
+        }
+      }
+    };
 
     document.addEventListener('contextmenu', preventDefault);
     document.addEventListener('copy', preventDefault);
@@ -230,8 +265,25 @@ export default function AssessmentEnvironment() {
   };
 
   const handleStart = () => {
+    // Clipboard Sanitization
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText('Security: Clipboard Cleared').catch(() => {});
+    }
     enterFullscreen();
   };
+
+  // Auto Save Feature
+  useEffect(() => {
+    if (!hasStarted || !assessment) return;
+    const interval = setInterval(() => {
+      if (assessment.type === 'CODING') {
+        localStorage.setItem(`assessment_${id}_code`, code);
+      } else if (assessment.type === 'QUIZ') {
+        localStorage.setItem(`assessment_${id}_quizAnswers`, JSON.stringify(quizAnswers));
+      }
+    }, 30000);
+    return () => clearInterval(interval);
+  }, [hasStarted, assessment, id, code, quizAnswers]);
 
   const nextQuestion = () => {
     if (currentQuestionIdx < questions.length - 1) {
@@ -295,9 +347,7 @@ export default function AssessmentEnvironment() {
         // Submit to leaderboard backend
         try {
             const token = localStorage.getItem('token');
-            // Mock score calculation - in real system, this would be graded by Judge0 / Quiz answers
-            let projectedScore = assessment?.type === 'QUIZ' ? Math.floor(Math.random() * assessment?.totalPoints) : 100;
-
+            // Score calculation is now securely processed on the backend
             await fetch('http://localhost:8081/api/v1/leaderboard/submit', {
                method: 'POST',
                headers: {
@@ -306,7 +356,9 @@ export default function AssessmentEnvironment() {
                },
                body: JSON.stringify({
                  assessmentId: assessment.id,
-                 points: projectedScore
+                 answers: quizAnswers,
+                 code: code,
+                 languageId: language?.id || 54
                })
             });
         } catch (e) { console.error('Submission error:', e); }
@@ -347,11 +399,9 @@ export default function AssessmentEnvironment() {
     });
   };
 
-  if (!assessment) return <div className="bg-[#FFFFFF] min-h-screen text-[#2C3E50] pt-20 text-center font-sans font-bold uppercase tracking-widest text-sm">Loading Environment...</div>;
-
-  const startTime = assessment.startTime ? new Date(assessment.startTime) : null;
+  const startTime = assessment?.startTime ? new Date(assessment.startTime) : null;
   const isBeforeStart = startTime && now < startTime;
-  const endTime = assessment.endTime ? new Date(assessment.endTime) : null;
+  const endTime = assessment?.endTime ? new Date(assessment.endTime) : null;
   const isAfterEnd = endTime && now > endTime;
   const currentQ = questions[currentQuestionIdx];
 
@@ -364,11 +414,13 @@ export default function AssessmentEnvironment() {
         type: 'warning',
         confirmText: 'Acknowledge',
         onConfirm: () => {
-          submitCode(true);
+          submitCode(true); // Ensure submitCode has access if needed, though it's bound.
         }
       });
     }
-  }, [isAfterEnd, hasStarted, modalConfig]);
+  }, [isAfterEnd, hasStarted, modalConfig]); // removed submitCode as it changes constantly depending on render
+
+  if (!assessment) return <div className="bg-[#FFFFFF] min-h-screen text-[#2C3E50] pt-20 text-center font-sans font-bold uppercase tracking-widest text-sm">Loading Environment...</div>;
 
   // 1. LIMIT EXCEEDED UI
   if (attemptLimitExceeded) {
@@ -394,56 +446,7 @@ export default function AssessmentEnvironment() {
     );
   }
 
-  // 2. WAITING ROOM UI WITH ACTIVE TIMER
-  if (isBeforeStart) {
-    const diff = Math.max(0, startTime.getTime() - now.getTime());
-    const hrs = Math.floor(diff / 3600000);
-    const mins = Math.floor((diff % 3600000) / 60000);
-    const secs = Math.floor((diff % 60000) / 1000);
-
-    return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-[#F4F4F4] text-[#2C3E50] p-4 font-sans relative overflow-hidden">
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[60vw] h-[60vw] bg-[#4CAF50]/40 rounded-full blur-[120px] pointer-events-none"></div>
-
-        <motion.h1
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="text-4xl md:text-5xl font-extrabold mb-4 text-center text-[#007ACC] drop-shadow-sm"
-        >
-          {assessment.title}
-        </motion.h1>
-        <p className="text-[#2C3E50]/60 text-lg mb-12 italic text-center font-bold tracking-wider">Assessment unlocks in:</p>
-
-        <div className="flex gap-4 md:gap-8 relative z-10">
-          {[
-            { label: 'Hours', value: hrs, color: 'text-[#007ACC]' },
-            { label: 'Minutes', value: mins, color: 'text-[#F0A500]' },
-            { label: 'Seconds', value: secs, color: 'text-[#007ACC]' }
-          ].map((item) => (
-            <div
-              key={item.label}
-              className="bg-[#FFFFFF] border-4 border-[#4CAF50] p-6 md:p-10 rounded-[2rem] flex flex-col items-center min-w-[120px] md:min-w-[180px] shadow-xl shadow-[#007ACC]/20"
-            >
-              <span className={`text-6xl md:text-8xl font-sans ${item.color} mb-3 font-black`}>
-                {item.value.toString().padStart(2, '0')}
-              </span>
-              <span className="text-[10px] md:text-xs text-[#2C3E50]/60 uppercase tracking-[0.25em] font-black">
-                {item.label}
-              </span>
-            </div>
-          ))}
-        </div>
-
-        <div className="mt-20 flex items-center gap-3 px-8 py-4 bg-[#FFFFFF] border-2 border-[#4CAF50] rounded-full shadow-lg relative z-10">
-          <div className="relative">
-            <div className="w-3 h-3 bg-[#007ACC] rounded-full animate-ping absolute"></div>
-            <div className="w-3 h-3 bg-[#007ACC] rounded-full relative z-10"></div>
-          </div>
-          <span className="text-[#2C3E50] text-xs font-black uppercase tracking-widest font-sans">Live Secure Sync</span>
-        </div>
-      </div>
-    );
-  }
+  // Wait room logic moved inside the Secure Gateway overlay.
 
   // MAIN UI COMPONENT WITH AUTO-FULLSCREEN GATE
   return (
@@ -486,7 +489,7 @@ export default function AssessmentEnvironment() {
         )}
       </AnimatePresence>
 
-      {/* 2. AUTO-FULLSCREEN GATE POPUP */}
+      {/* 2. AUTO-FULLSCREEN GATE POPUP (Including Wait Logic) */}
       <AnimatePresence>
         {!hasStarted && !modalConfig && (
           <motion.div 
@@ -500,15 +503,33 @@ export default function AssessmentEnvironment() {
                 <Lock className="w-10 h-10 text-[#007ACC]" />
               </div>
               <h2 className="text-3xl font-extrabold text-[#2C3E50] mb-4">Secure Gateway</h2>
-              <p className="text-[#2C3E50]/80 font-bold mb-10 leading-relaxed">
-                By clicking <strong>Start</strong>, you agree to enter a secure fullscreen environment. Switching tabs or exiting fullscreen will result in penalties.
-              </p>
+              
+              {isBeforeStart ? (() => {
+                 const diff = Math.max(0, startTime.getTime() - now.getTime());
+                 const hrs = Math.floor(diff / 3600000).toString().padStart(2, '0');
+                 const mins = Math.floor((diff % 3600000) / 60000).toString().padStart(2, '0');
+                 const secs = Math.floor((diff % 60000) / 1000).toString().padStart(2, '0');
+                 return (
+                   <div className="mb-8">
+                      <p className="text-[#2C3E50]/80 font-bold mb-4 uppercase tracking-widest text-xs">Unlocks in:</p>
+                      <div className="text-5xl font-black text-[#007ACC] tabular-nums tracking-widest">
+                        {hrs}:{mins}:{secs}
+                      </div>
+                   </div>
+                 );
+              })() : (
+                 <p className="text-[#2C3E50]/80 font-bold mb-10 leading-relaxed">
+                   By clicking <strong>Start</strong>, you agree to enter a secure fullscreen environment. Switching tabs or exiting fullscreen will result in penalties.
+                 </p>
+              )}
+
               <button 
                 onClick={handleStart} 
-                className="bg-[#007ACC] text-[#2C3E50] w-full py-5 rounded-2xl font-black text-lg uppercase tracking-widest shadow-lg shadow-[#007ACC]/30 flex items-center justify-center gap-3 hover:bg-[#F0A500] hover:scale-[1.02] active:scale-95 transition-all"
+                disabled={isBeforeStart}
+                className={`w-full py-5 rounded-2xl font-black text-lg uppercase tracking-widest flex items-center justify-center gap-3 transition-all ${isBeforeStart ? 'bg-slate-300 text-slate-500 cursor-not-allowed opacity-70' : 'bg-[#007ACC] text-[#FFFFFF] shadow-lg shadow-[#007ACC]/30 hover:bg-[#F0A500] hover:scale-[1.02] active:scale-95'}`}
               >
-                <Play fill="currentColor" size={20}/>
-                Start Assessment
+                {!isBeforeStart && <Play fill="currentColor" size={20}/>}
+                {isBeforeStart ? 'Enter Contest / Quiz' : 'Start Assessment'}
               </button>
             </div>
           </motion.div>
@@ -563,15 +584,20 @@ export default function AssessmentEnvironment() {
                 {/* User Requested: Language Dropdown */}
                 <div className="flex items-center gap-4">
                   <span className="text-xs font-black text-[#2C3E50] uppercase tracking-widest hidden sm:inline-block">Language:</span>
-                  <select 
-                    value={language.value} 
-                    onChange={handleLanguageChange} 
-                    className="bg-[#FFFFFF] border-2 border-[#4CAF50] text-[#2C3E50] font-black text-xs px-4 py-2 rounded-xl focus:outline-none focus:border-[#007ACC]"
-                  >
-                    {availableLanguages.map(lang => (
-                      <option key={lang.id} value={lang.value}>{lang.name}</option>
-                    ))}
-                  </select>
+                  <div className="relative">
+                    <select 
+                      value={language.value} 
+                      onChange={handleLanguageChange} 
+                      className="appearance-none bg-[#FFFFFF] border-2 border-[#4CAF50] text-[#2C3E50] font-black text-xs pl-4 pr-10 py-2.5 rounded-xl outline-none focus:border-[#007ACC] focus:ring-4 focus:ring-[#007ACC]/20 transition-all cursor-pointer shadow-sm hover:border-[#007ACC]"
+                    >
+                      {availableLanguages.map(lang => (
+                        <option key={lang.id} value={lang.value}>{lang.name}</option>
+                      ))}
+                    </select>
+                    <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-[#2C3E50]">
+                      <svg className="w-4 h-4 fill-current" viewBox="0 0 20 20"><path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"/></svg>
+                    </div>
+                  </div>
                 </div>
 
                 <button onClick={runCode} disabled={isRunning} className="px-6 py-2 rounded-xl text-xs font-black bg-[#007ACC] hover:bg-[#F0A500] text-[#2C3E50] shadow-lg shadow-[#007ACC]/30 transition-all border-2 border-[#007ACC] flex items-center gap-2 disabled:opacity-50">
@@ -606,8 +632,42 @@ export default function AssessmentEnvironment() {
           </>
         ) : (
           /* QUIZ UI REVAMP */
-          <div className="flex-1 flex flex-col self-center max-w-4xl w-full p-4 mt-8">
-             <div className="flex items-center justify-between mb-8 px-4">
+          <div className="flex-1 flex flex-col sm:flex-row w-full bg-[#F4F4F4]">
+             {/* LEFT SIDEBAR navigation */}
+             <div className="w-full sm:w-24 md:w-64 border-b-4 sm:border-b-0 sm:border-r-4 border-[#4CAF50] bg-[#FFFFFF] flex flex-col pt-6 overflow-y-auto">
+                 <h3 className="text-center font-black text-[#2C3E50] uppercase tracking-widest text-xs mb-6 px-2 hidden sm:block">Quiz Navigator</h3>
+                 <div className="flex sm:grid sm:grid-cols-2 lg:grid-cols-4 gap-3 px-4 pb-6 sm:pb-10 overflow-x-auto sm:overflow-x-visible">
+                    {questions.map((q, idx) => {
+                       const isAnswered = quizAnswers[q.id] && quizAnswers[q.id].length > 0;
+                       const isSkipped = !isAnswered && q.status === 'visited';
+                       
+                       return (
+                          <button
+                            key={idx}
+                            onClick={() => setCurrentQuestionIdx(idx)}
+                            className={`flex-shrink-0 w-10 h-10 md:w-12 md:h-12 flex items-center justify-center rounded-xl font-black transition-all mx-auto border-2 ${
+                              currentQuestionIdx === idx 
+                                ? 'border-[#2C3E50] shadow-md ring-4 ring-[#007ACC]/20' 
+                                : 'border-transparent hover:border-[#4CAF50]'
+                            } ${
+                              isAnswered ? 'bg-[#4CAF50] text-white' : isSkipped ? 'bg-rose-400 text-white' : 'bg-[#F4F4F4] text-[#2C3E50]/50'
+                            }`}
+                            title={isAnswered ? 'Answered' : isSkipped ? 'Skipped' : 'Unvisited'}
+                          >
+                            {idx + 1}
+                          </button>
+                       )
+                    })}
+                 </div>
+                 <div className="hidden sm:flex flex-col gap-2 px-6 mt-auto pb-10">
+                    <div className="flex items-center gap-2 text-xs font-bold text-[#2C3E50]"><span className="w-3 h-3 rounded-sm bg-[#4CAF50]"></span> Answered</div>
+                    <div className="flex items-center gap-2 text-xs font-bold text-[#2C3E50]"><span className="w-3 h-3 rounded-sm bg-rose-400"></span> Skipped</div>
+                    <div className="flex items-center gap-2 text-xs font-bold text-[#2C3E50]"><span className="w-3 h-3 rounded-sm bg-[#F4F4F4] border border-gray-300"></span> Unvisited</div>
+                 </div>
+             </div>
+
+             <div className="flex-1 flex flex-col self-center max-w-4xl w-full p-4 mt-8 pb-32">
+               <div className="flex items-center justify-between mb-8 px-4">
                <div>
                   <h1 className="text-xl font-black text-[#2C3E50]">{assessment.title}</h1>
                   <p className="text-sm text-[#2C3E50]/60 font-bold">Question {currentQuestionIdx + 1} of {questions.length}</p>
@@ -692,12 +752,13 @@ export default function AssessmentEnvironment() {
                   )}
                 </div>
              </div>
+            </div>
           </div>
         )}
       </div>
 
-      {/* FLOATING ACTION BAR FIX: pointer-events-none and container positioning fixed to bot */}
-      <div className="fixed bottom-0 left-0 right-0 p-6 md:p-10 z-[60] pointer-events-none flex justify-end items-center gap-4">
+      {/* FLOATING ACTION BAR FIX: Removed left-0 right-0 to stop spanning entire screen width */}
+      <div className="fixed bottom-6 right-6 md:bottom-10 md:right-10 z-[60] pointer-events-none flex items-center gap-4">
         {assessment.type === 'QUIZ' && currentQuestionIdx < questions.length - 1 && (
            <button
              onClick={nextQuestion}

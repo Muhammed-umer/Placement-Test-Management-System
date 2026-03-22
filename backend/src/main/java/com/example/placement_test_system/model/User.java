@@ -24,6 +24,8 @@ public class User implements UserDetails {
     @Column(unique = true, nullable = false)
     private String email;
 
+    private String fullName;
+
     @Column(nullable = false)
     private String password;
 
@@ -32,10 +34,22 @@ public class User implements UserDetails {
     private Role role;
 
     private boolean mustChangePassword;
+
+    // Personal Information
+    private String gender;
+    private String dob;
+    private String registrationNumber;
+    private String phone;
+    
+    // Academic Information
+    private String batch;
+    private String department;
     
     // Portfolio Information
     private String githubLink;
     private String linkedinLink;
+    private String leetcodeLink;
+
     @Column(columnDefinition = "TEXT")
     private String projectShowcase;
     @Column(columnDefinition = "TEXT")
