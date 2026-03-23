@@ -27,14 +27,10 @@ export default function Dashboard() {
     registrationNumber: '',
     phone: '',
     batch: '',
-    department: ''
+    department: '',
+    projectShowcase: '',
+    achievements: ''
   });
-
-  const [projectsArray, setProjectsArray] = useState([]);
-  const [achievementsArray, setAchievementsArray] = useState([]);
-
-  const [newProject, setNewProject] = useState('');
-  const [newAchievement, setNewAchievement] = useState('');
 
   const [activeAssessments, setActiveAssessments] = useState([]);
   const [notifications, setNotifications] = useState(0);
@@ -56,11 +52,10 @@ export default function Dashboard() {
           registrationNumber: data.registrationNumber || '',
           phone: data.phone || '',
           batch: data.batch || '',
-          department: data.department || ''
+          department: data.department || '',
+          projectShowcase: data.projectShowcase || '',
+          achievements: data.achievements || ''
         });
-        
-        try { setProjectsArray(JSON.parse(data.projectShowcase || '[]')); } catch(e) { setProjectsArray([]); }
-        try { setAchievementsArray(JSON.parse(data.achievements || '[]')); } catch(e) { setAchievementsArray([]); }
       }
     } catch (e) {
       console.error('Failed to fetch profile:', e);
@@ -70,9 +65,7 @@ export default function Dashboard() {
   const saveProfile = async () => {
     try {
       const payload = {
-        ...profile,
-        projectShowcase: JSON.stringify(projectsArray),
-        achievements: JSON.stringify(achievementsArray)
+        ...profile
       };
 
       const res = await fetch('http://localhost:8081/api/v1/profile', {
@@ -131,44 +124,39 @@ export default function Dashboard() {
     setProfile(p => ({ ...p, [name]: value }));
   };
 
-  const addProject = () => {
-    if (newProject.trim()) {
-      setProjectsArray([...projectsArray, newProject.trim()]);
-      setNewProject('');
-    }
-  };
 
-  const addAchievement = () => {
-    if (newAchievement.trim()) {
-      setAchievementsArray([...achievementsArray, newAchievement.trim()]);
-      setNewAchievement('');
-    }
-  };
 
-  const removeProject = (idx) => {
-    setProjectsArray(projectsArray.filter((_, i) => i !== idx));
+  const renderField = (icon, label, name, placeholder = '', type = 'text') => {
+    const isTextArea = type === 'textarea';
+    return (
+      <div className="mb-4">
+        <label className="text-xs font-bold text-[#2C3E50] uppercase tracking-widest flex items-center gap-2 mb-2">
+          {icon} {label}
+        </label>
+        {isTextArea ? (
+          <textarea 
+            name={name}
+            value={profile[name] || ''} 
+            onChange={handleInputChange}
+            placeholder={placeholder || `Enter ${label}`}
+            disabled={!isEditing}
+            rows={4}
+            className="w-full bg-[#FFFFFF] border-2 border-[#4CAF50] text-[#2C3E50] rounded-xl px-4 py-3 text-sm font-medium focus:outline-none focus:border-[#007ACC] focus:ring-4 focus:ring-[#4CAF50]/30 transition-all shadow-sm disabled:opacity-50 disabled:bg-[#F4F4F4]"
+          />
+        ) : (
+          <input 
+            type={type} 
+            name={name}
+            value={profile[name] || ''} 
+            onChange={handleInputChange}
+            placeholder={placeholder || `Enter ${label}`}
+            disabled={!isEditing}
+            className="w-full bg-[#FFFFFF] border-2 border-[#4CAF50] text-[#2C3E50] rounded-xl px-4 py-3 text-sm font-medium focus:outline-none focus:border-[#007ACC] focus:ring-4 focus:ring-[#4CAF50]/30 transition-all shadow-sm disabled:opacity-50 disabled:bg-[#F4F4F4]"
+          />
+        )}
+      </div>
+    );
   };
-
-  const removeAchievement = (idx) => {
-    setAchievementsArray(achievementsArray.filter((_, i) => i !== idx));
-  };
-
-  const renderField = (icon, label, name, placeholder = '', type = 'text') => (
-    <div className="mb-4">
-      <label className="text-xs font-bold text-[#2C3E50] uppercase tracking-widest flex items-center gap-2 mb-2">
-        {icon} {label}
-      </label>
-      <input 
-        type={type} 
-        name={name}
-        value={profile[name] || ''} 
-        onChange={handleInputChange}
-        placeholder={placeholder || `Enter ${label}`}
-        disabled={!isEditing}
-        className="w-full bg-[#FFFFFF] border-2 border-[#4CAF50] text-[#2C3E50] rounded-xl px-4 py-3 text-sm font-medium focus:outline-none focus:border-[#007ACC] focus:ring-4 focus:ring-[#4CAF50]/30 transition-all shadow-sm disabled:opacity-50 disabled:bg-[#F4F4F4]"
-      />
-    </div>
-  );
 
   return (
     <div className="flex min-h-screen bg-[#F4F4F4] text-[#2C3E50] font-sans">
@@ -416,59 +404,13 @@ export default function Dashboard() {
                       
                       {/* Achievements List */}
                       <div className="mt-8">
-                        <label className="text-xs font-bold text-[#2C3E50] uppercase tracking-widest flex items-center gap-2 mb-4">
-                          <Trophy size={16} className="text-[#007ACC]" /> Achievements
-                        </label>
-                        {isEditing && (
-                          <div className="flex gap-2 mb-4">
-                            <input 
-                              type="text" 
-                              value={newAchievement} 
-                              onChange={(e) => setNewAchievement(e.target.value)}
-                              placeholder="Add an achievement..." 
-                              className="flex-1 bg-[#FFFFFF] border-2 border-[#4CAF50] text-[#2C3E50] rounded-xl px-4 py-2 text-sm font-medium focus:outline-none focus:border-[#007ACC]"
-                            />
-                            <button onClick={addAchievement} className="bg-[#007ACC] text-[#2C3E50] p-3 rounded-xl hover:bg-[#F0A500] transition-colors"><PlusCircle size={20} /></button>
-                          </div>
-                        )}
-                        <ul className="space-y-3">
-                          {achievementsArray.map((item, idx) => (
-                            <li key={idx} className="flex justify-between items-center bg-[#F4F4F4] border border-[#4CAF50] p-3 rounded-xl text-sm font-bold">
-                              <span>🏆 {item}</span>
-                              {isEditing && <button onClick={() => removeAchievement(idx)} className="text-red-500 hover:text-red-700 bg-white p-2 rounded-lg"><Trash2 size={16} /></button>}
-                            </li>
-                          ))}
-                          {achievementsArray.length === 0 && <p className="text-sm font-bold opacity-50">No achievements added yet.</p>}
-                        </ul>
+                        {renderField(<Trophy size={16} className="text-[#007ACC]" />, 'Achievements & Awards', 'achievements', 'List your achievements...', 'textarea')}
                       </div>
                     </div>
                     
                     <div>
                       {/* Projects List */}
-                      <label className="text-xs font-bold text-[#2C3E50] uppercase tracking-widest flex items-center gap-2 mb-4">
-                        <Globe size={16} className="text-[#007ACC]" /> Project Showcase
-                      </label>
-                      {isEditing && (
-                        <div className="flex gap-2 mb-4">
-                          <input 
-                            type="text" 
-                            value={newProject} 
-                            onChange={(e) => setNewProject(e.target.value)}
-                            placeholder="Add a project or link..." 
-                            className="flex-1 bg-[#FFFFFF] border-2 border-[#4CAF50] text-[#2C3E50] rounded-xl px-4 py-2 text-sm font-medium focus:outline-none focus:border-[#007ACC]"
-                          />
-                          <button onClick={addProject} className="bg-[#007ACC] text-[#2C3E50] p-3 rounded-xl hover:bg-[#F0A500] transition-colors"><PlusCircle size={20} /></button>
-                        </div>
-                      )}
-                      <ul className="space-y-3">
-                        {projectsArray.map((item, idx) => (
-                          <li key={idx} className="flex justify-between items-center bg-[#F4F4F4] border border-[#4CAF50] p-3 rounded-xl text-sm font-bold">
-                            <span>🚀 {item}</span>
-                            {isEditing && <button onClick={() => removeProject(idx)} className="text-red-500 hover:text-red-700 bg-white p-2 rounded-lg"><Trash2 size={16} /></button>}
-                          </li>
-                        ))}
-                        {projectsArray.length === 0 && <p className="text-sm font-bold opacity-50">No projects added yet.</p>}
-                      </ul>
+                      {renderField(<Globe size={16} className="text-[#007ACC]" />, 'Project Showcase', 'projectShowcase', 'Link or describe your projects...', 'textarea')}
                     </div>
                   </div>
                </div>

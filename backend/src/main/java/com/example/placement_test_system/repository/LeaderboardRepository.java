@@ -10,4 +10,5 @@ import java.util.List;
 public interface LeaderboardRepository extends JpaRepository<LeaderboardEntry, Long> {
     List<LeaderboardEntry> findByAssessmentIdOrderByTotalPointsDescFinishTimeAsc(Long assessmentId);
     LeaderboardEntry findByAssessmentIdAndStudentEmail(Long assessmentId, String studentEmail);
+    List<LeaderboardEntry> findByStudentEmail(String studentEmail);
 }

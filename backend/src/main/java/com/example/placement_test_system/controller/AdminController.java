@@ -50,4 +50,43 @@ public class AdminController {
     public ResponseEntity<java.util.List<com.example.placement_test_system.model.User>> getAllAdmins() {
         return ResponseEntity.ok(adminService.getAllAdmins());
     }
+
+    @org.springframework.beans.factory.annotation.Autowired
+    private com.example.placement_test_system.repository.LeaderboardRepository leaderboardRepository;
+    
+    @org.springframework.beans.factory.annotation.Autowired
+    private com.example.placement_test_system.repository.AssessmentRepository assessmentRepository;
+
+    @GetMapping("/students/{email}/stats")
+    @PreAuthorize("hasAnyRole('ROLE_ADMIN', 'ROLE_SUPER_ADMIN')")
+    public ResponseEntity<java.util.Map<String, Object>> getStudentStats(@PathVariable String email) {
+        java.util.List<com.example.placement_test_system.model.LeaderboardEntry> entries = leaderboardRepository.findByStudentEmail(email);
+        int quizCount = 0;
+        int contestCount = 0;
+        int totalQuizScore = 0;
+        int totalContestScore = 0;
+        
+        for (com.example.placement_test_system.model.LeaderboardEntry e : entries) {
+            com.example.placement_test_system.model.Assessment a = assessmentRepository.findById(e.getAssessmentId()).orElse(null);
+            if (a != null) {
+                if ("QUIZ".equals(a.getType().name())) {
+                    quizCount++;
+                    totalQuizScore += e.getTotalPoints();
+                } else if ("CODING".equals(a.getType().name())) {
+                    contestCount++;
+                    totalContestScore += e.getTotalPoints();
+                }
+            }
+        }
+        
+        double avgQuiz = quizCount > 0 ? (double) totalQuizScore / quizCount : 0;
+        double avgContest = contestCount > 0 ? (double) totalContestScore / contestCount : 0;
+        
+        return ResponseEntity.ok(java.util.Map.of(
+            "quizCount", quizCount,
+            "contestCount", contestCount,
+            "avgQuizScore", Math.round(avgQuiz * 100.0) / 100.0,
+            "avgContestScore", Math.round(avgContest * 100.0) / 100.0
+        ));
+    }
 }

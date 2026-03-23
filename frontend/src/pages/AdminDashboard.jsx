@@ -9,6 +9,22 @@ import { useNavigate } from 'react-router-dom';
 import * as pdfjsLib from 'pdfjs-dist';
 pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
 const StudentProfileModal = ({ student, onClose }) => {
+  const [stats, setStats] = useState(null);
+  const [loadingStats, setLoadingStats] = useState(false);
+
+  useEffect(() => {
+    if (student && student.email) {
+      setLoadingStats(true);
+      fetch(`http://localhost:8081/api/v1/admin/students/${student.email}/stats`, {
+        headers: { 'Authorization': `Bearer ${sessionStorage.getItem('token')}` }
+      })
+      .then(res => res.json())
+      .then(data => setStats(data))
+      .catch(err => console.error(err))
+      .finally(() => setLoadingStats(false));
+    }
+  }, [student]);
+
   if (!student) return null;
 
   const LinkIcon = ({ href, label, icon: Icon }) => (
@@ -27,65 +43,100 @@ const StudentProfileModal = ({ student, onClose }) => {
         initial={{ opacity: 0, scale: 0.95, y: 20 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.95, y: 20 }}
-        className="relative w-full max-w-3xl bg-white rounded-3xl shadow-2xl shadow-brand-500/20 overflow-hidden"
+        className="relative w-full max-w-4xl bg-white rounded-3xl shadow-2xl shadow-brand-500/20 overflow-hidden"
       >
         <div className="bg-gradient-to-r from-[#007ACC] to-brand-500 p-8 text-white relative">
           <button onClick={onClose} className="absolute top-6 right-6 p-2 bg-white/20 hover:bg-white/40 rounded-full transition-colors backdrop-blur-md">
              <X size={20} className="text-white" />
           </button>
           <div className="flex items-center gap-6">
-            <div className="w-24 h-24 bg-white rounded-full flex items-center justify-center text-4xl font-black text-[#007ACC] shadow-inner">
+            <div className="w-24 h-24 bg-white rounded-full flex items-center justify-center text-4xl font-black text-[#007ACC] shadow-inner shrink-0">
                {(student.fullName?.[0] || 'U').toUpperCase()}
             </div>
-            <div>
+            <div className="flex-1">
               <h2 className="text-3xl font-black tracking-tight">{student.fullName || 'Student'}</h2>
               <p className="text-brand-100 font-medium text-lg opacity-90">{student.email}</p>
-              <div className="mt-3 inline-flex items-center gap-2 bg-white/20 px-4 py-1.5 rounded-full text-sm font-bold backdrop-blur-md border border-white/30">
-                <Users size={16} /> Verified {student.role || 'STUDENT'}
+              <div className="mt-3 flex flex-wrap gap-2">
+                <span className="inline-flex items-center gap-2 bg-white/20 px-4 py-1.5 rounded-full text-sm font-bold backdrop-blur-md border border-white/30"><Users size={16} /> Verified {student.role || 'STUDENT'}</span>
+                {student.registrationNumber && <span className="inline-flex items-center gap-2 bg-white/20 px-4 py-1.5 rounded-full text-sm font-bold backdrop-blur-md border border-white/30">Reg No: {student.registrationNumber}</span>}
+                {student.department && <span className="inline-flex items-center gap-2 bg-white/20 px-4 py-1.5 rounded-full text-sm font-bold backdrop-blur-md border border-white/30">{student.department}</span>}
               </div>
             </div>
           </div>
         </div>
         
-        <div className="p-8 max-h-[60vh] overflow-y-auto w-full grid grid-cols-1 md:grid-cols-2 gap-8">
-           <div className="space-y-6">
-              <h3 className="text-xl font-black border-b-2 border-slate-100 pb-2 text-[#2C3E50] flex items-center gap-2">
-                 <History size={20} className="text-[#007ACC]" /> Academic Details
-              </h3>
-              <div className="bg-slate-50 p-5 rounded-2xl border border-slate-200 space-y-4">
-                 <div className="flex justify-between items-center"><span className="text-sm font-bold text-slate-500">CGPA</span><span className="font-black text-[#2C3E50]">{student.cgpa || 'N/A'}</span></div>
-                 <div className="flex justify-between items-center"><span className="text-sm font-bold text-slate-500">12th Grade</span><span className="font-black text-[#2C3E50]">{student.twelfthGradeMarks ? `${student.twelfthGradeMarks}%` : 'N/A'}</span></div>
-                 <div className="flex justify-between items-center"><span className="text-sm font-bold text-slate-500">10th Grade</span><span className="font-black text-[#2C3E50]">{student.tenthGradeMarks ? `${student.tenthGradeMarks}%` : 'N/A'}</span></div>
-                 <div className="flex justify-between items-center"><span className="text-sm font-bold text-slate-500">Department</span><span className="font-black text-[#2C3E50]">{student.department || 'N/A'}</span></div>
-                 <div className="flex justify-between items-center"><span className="text-sm font-bold text-slate-500">Graduation Year</span><span className="font-black text-[#2C3E50]">{student.graduatingYear || 'N/A'}</span></div>
+        <div className="p-8 max-h-[60vh] overflow-y-auto w-full">
+           {/* Performance Stats */}
+           <h3 className="text-xl font-black border-b-2 border-slate-100 pb-2 text-[#2C3E50] flex items-center gap-2 mb-4">
+              <BarChart3 size={20} className="text-[#007ACC]" /> Performance Analytics
+           </h3>
+           {loadingStats ? (
+              <div className="text-slate-400 font-bold mb-6">Loading stats...</div>
+           ) : stats ? (
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+                 <div className="bg-blue-50 p-4 rounded-xl border border-blue-100 text-center">
+                    <div className="text-2xl font-black text-blue-700">{stats.quizCount}</div>
+                    <div className="text-xs font-bold text-blue-600 uppercase tracking-wider">Quizzes Attended</div>
+                 </div>
+                 <div className="bg-green-50 p-4 rounded-xl border border-green-100 text-center">
+                    <div className="text-2xl font-black text-green-700">{stats.avgQuizScore}</div>
+                    <div className="text-xs font-bold text-green-600 uppercase tracking-wider">Avg Quiz Score</div>
+                 </div>
+                 <div className="bg-purple-50 p-4 rounded-xl border border-purple-100 text-center">
+                    <div className="text-2xl font-black text-purple-700">{stats.contestCount}</div>
+                    <div className="text-xs font-bold text-purple-600 uppercase tracking-wider">Contests Attended</div>
+                 </div>
+                 <div className="bg-orange-50 p-4 rounded-xl border border-orange-100 text-center">
+                    <div className="text-2xl font-black text-orange-700">{stats.avgContestScore}</div>
+                    <div className="text-xs font-bold text-orange-600 uppercase tracking-wider">Avg Contest Score</div>
+                 </div>
               </div>
-           </div>
-           
-           <div className="space-y-6">
-              <h3 className="text-xl font-black border-b-2 border-slate-100 pb-2 text-[#2C3E50] flex items-center gap-2">
-                 <Globe size={20} className="text-[#007ACC]" /> Coding Profiles
-              </h3>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                 <LinkIcon href={student.leetCodeLink} label="LeetCode" icon={Code} />
-                 <LinkIcon href={student.githubLink} label="GitHub" icon={Code} />
-                 <LinkIcon href={student.hackerrankLink} label="HackerRank" icon={Code} />
-                 <LinkIcon href={student.codechefLink} label="CodeChef" icon={Code} />
-                 <LinkIcon href={student.linkedinLink} label="LinkedIn" icon={Globe} />
-                 {(!student.leetCodeLink && !student.githubLink && !student.hackerrankLink && !student.codechefLink && !student.linkedinLink) && (
-                    <div className="col-span-2 p-4 text-center text-sm font-bold text-slate-400 bg-slate-50 rounded-xl border-2 border-dashed border-slate-200">
-                      No linked profiles available.
-                    </div>
-                 )}
-              </div>
-              
-              <h3 className="text-xl font-black border-b-2 border-slate-100 pb-2 text-[#2C3E50] flex items-center gap-2 mt-8">
-                 <ListChecks size={20} className="text-[#007ACC]" /> Achievements
-              </h3>
-              <div className="bg-brand-50/50 p-5 rounded-2xl border border-brand-100 text-sm font-medium text-[#2C3E50]">
-                 {student.achievements ? student.achievements.split('\n').map((ach, i) => (
-                    <div key={i} className="flex gap-2 mb-2 last:mb-0"><div className="w-1.5 h-1.5 rounded-full bg-brand-500 mt-1.5 shrink-0" />{ach}</div>
-                 )) : <span className="text-slate-400 italic font-bold">No achievements listed.</span>}
-              </div>
+           ) : (
+              <div className="text-red-400 font-bold mb-6">Stats unavailable</div>
+           )}
+
+           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+             <div className="space-y-6">
+                <h3 className="text-xl font-black border-b-2 border-slate-100 pb-2 text-[#2C3E50] flex items-center gap-2">
+                   <History size={20} className="text-[#007ACC]" /> Personal Details
+                </h3>
+                <div className="bg-slate-50 p-5 rounded-2xl border border-slate-200 space-y-4">
+                   <div className="flex justify-between items-center"><span className="text-sm font-bold text-slate-500">Gender</span><span className="font-black text-[#2C3E50]">{student.gender || 'N/A'}</span></div>
+                   <div className="flex justify-between items-center"><span className="text-sm font-bold text-slate-500">Date of Birth</span><span className="font-black text-[#2C3E50]">{student.dob || 'N/A'}</span></div>
+                   <div className="flex justify-between items-center"><span className="text-sm font-bold text-slate-500">Phone</span><span className="font-black text-[#2C3E50]">{student.phone || 'N/A'}</span></div>
+                   <div className="flex justify-between items-center"><span className="text-sm font-bold text-slate-500">Batch</span><span className="font-black text-[#2C3E50]">{student.batch || 'N/A'}</span></div>
+                </div>
+             </div>
+             
+             <div className="space-y-6">
+                <h3 className="text-xl font-black border-b-2 border-slate-100 pb-2 text-[#2C3E50] flex items-center gap-2">
+                   <Globe size={20} className="text-[#007ACC]" /> Coding Profiles & Projects
+                </h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
+                   <LinkIcon href={student.leetcodeLink} label="LeetCode" icon={Code} />
+                   <LinkIcon href={student.githubLink} label="GitHub" icon={Code} />
+                   <LinkIcon href={student.linkedinLink} label="LinkedIn" icon={Globe} />
+                   {(!student.leetcodeLink && !student.githubLink && !student.linkedinLink) && (
+                      <div className="col-span-2 p-4 text-center text-sm font-bold text-slate-400 bg-slate-50 rounded-xl border-2 border-dashed border-slate-200">
+                        No linked profiles available.
+                      </div>
+                   )}
+                </div>
+                
+                {student.projectShowcase && (
+                  <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 mt-4">
+                    <span className="text-xs font-black uppercase text-slate-400 mb-1 block">Project Showcase</span>
+                    <p className="text-sm font-medium text-[#2C3E50] whitespace-pre-wrap">{student.projectShowcase}</p>
+                  </div>
+                )}
+                
+                <h3 className="text-xl font-black border-b-2 border-slate-100 pb-2 text-[#2C3E50] flex items-center gap-2 mt-6">
+                   <ListChecks size={20} className="text-[#007ACC]" /> Achievements
+                </h3>
+                <div className="bg-brand-50/50 p-5 rounded-2xl border border-brand-100 text-sm font-medium text-[#2C3E50] whitespace-pre-wrap">
+                   {student.achievements ? student.achievements : <span className="text-slate-400 italic font-bold">No achievements listed.</span>}
+                </div>
+             </div>
            </div>
         </div>
       </motion.div>
@@ -106,6 +157,10 @@ export default function AdminDashboard() {
 
   const [contests, setContests] = useState([]);
   const [studentsList, setStudentsList] = useState([]);
+  const [studentSearchTerm, setStudentSearchTerm] = useState('');
+  const [studentCurrentPage, setStudentCurrentPage] = useState(1);
+  const studentsPerPage = 10;
+  
   const [submissionsList, setSubmissionsList] = useState([]);
   const [viewingAssessmentUrl, setViewingAssessmentUrl] = useState('');
   
@@ -895,15 +950,11 @@ export default function AdminDashboard() {
                        <input 
                          type="text" 
                          placeholder="Search students..." 
+                         value={studentSearchTerm}
                          className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm font-medium focus:border-brand-500 outline-none"
                          onChange={(e) => {
-                           /* Quick inline filtering */
-                           const val = e.target.value.toLowerCase();
-                           const rows = document.querySelectorAll('.student-row');
-                           rows.forEach(row => {
-                             const text = row.textContent.toLowerCase();
-                             row.style.display = text.includes(val) ? '' : 'none';
-                           });
+                           setStudentSearchTerm(e.target.value);
+                           setStudentCurrentPage(1); // Reset to first page on search
                          }}
                        />
                      </div>
@@ -912,25 +963,23 @@ export default function AdminDashboard() {
 
                 <div className="bg-white border text-sm border-slate-200 rounded-xl overflow-x-auto w-full shadow-sm">
                    {studentsList.length > 0 ? (
+                      <>
                       <table className="w-full text-left whitespace-nowrap">
                          <thead className="bg-slate-50 font-bold text-slate-500 uppercase tracking-widest text-[10px] md:text-xs border-b border-slate-200">
                             <tr>
                               <th className="px-6 py-4">Name</th>
                               <th className="px-6 py-4">Email Address</th>
-                              <th className="px-6 py-4">Role</th>
                               <th className="px-6 py-4">Status</th>
                             </tr>
                          </thead>
                          <tbody className="divide-y divide-slate-100 font-medium cursor-pointer">
-                            {studentsList.map((stu, i) => (
-                               <tr key={i} onClick={() => setSelectedStudent(stu)} className="hover:bg-slate-100 transition-colors student-row">
+                            {studentsList
+                              .filter(stu => (stu.fullName || '').toLowerCase().includes(studentSearchTerm.toLowerCase()) || (stu.email || '').toLowerCase().includes(studentSearchTerm.toLowerCase()))
+                              .slice((studentCurrentPage - 1) * studentsPerPage, studentCurrentPage * studentsPerPage)
+                              .map((stu, i) => (
+                               <tr key={i} onClick={() => setSelectedStudent(stu)} className="hover:bg-slate-100 transition-colors">
                                   <td className="px-6 py-4 text-[#2C3E50] font-bold">{stu.fullName || 'Unregistered'}</td>
                                   <td className="px-6 py-4 text-slate-500">{stu.email || 'N/A'}</td>
-                                  <td className="px-6 py-4">
-                                     <span className="bg-blue-50 text-blue-700 font-bold px-3 py-1 rounded-full text-[10px] tracking-wide uppercase border border-blue-100">
-                                       {stu.role || 'STUDENT'}
-                                     </span>
-                                  </td>
                                   <td className="px-6 py-4">
                                      <span className="bg-green-50 text-green-700 font-bold px-3 py-1 rounded-full text-[10px] tracking-wide uppercase border border-green-100">Verified</span>
                                   </td>
@@ -938,6 +987,38 @@ export default function AdminDashboard() {
                             ))}
                          </tbody>
                       </table>
+                      
+                      {/* Pagination Controls */}
+                      {(() => {
+                        const filteredLength = studentsList.filter(stu => (stu.fullName || '').toLowerCase().includes(studentSearchTerm.toLowerCase()) || (stu.email || '').toLowerCase().includes(studentSearchTerm.toLowerCase())).length;
+                        const totalPages = Math.ceil(filteredLength / studentsPerPage);
+                        if (totalPages <= 1) return null;
+                        
+                        return (
+                          <div className="flex items-center justify-between px-6 py-3 border-t border-slate-200 bg-slate-50">
+                             <div className="text-sm text-slate-500">
+                               Showing <span className="font-bold">{(studentCurrentPage - 1) * studentsPerPage + 1}</span> to <span className="font-bold">{Math.min(studentCurrentPage * studentsPerPage, filteredLength)}</span> of <span className="font-bold">{filteredLength}</span> students
+                             </div>
+                             <div className="flex gap-2">
+                               <button 
+                                 onClick={() => setStudentCurrentPage(p => Math.max(1, p - 1))} 
+                                 disabled={studentCurrentPage === 1}
+                                 className="px-3 py-1 border border-slate-300 rounded hover:bg-slate-200 disabled:opacity-50 disabled:hover:bg-transparent font-bold text-[#2C3E50]"
+                               >
+                                 Prev
+                               </button>
+                               <button 
+                                 onClick={() => setStudentCurrentPage(p => Math.min(totalPages, p + 1))} 
+                                 disabled={studentCurrentPage === totalPages}
+                                 className="px-3 py-1 border border-slate-300 rounded hover:bg-slate-200 disabled:opacity-50 disabled:hover:bg-transparent font-bold text-[#2C3E50]"
+                               >
+                                 Next
+                               </button>
+                             </div>
+                          </div>
+                        );
+                      })()}
+                      </>
                    ) : (
                       <div className="p-12 flex flex-col items-center justify-center text-slate-400">
                         <Users size={48} className="mb-4 text-slate-300" />
@@ -948,6 +1029,10 @@ export default function AdminDashboard() {
                 </div>
               </div>
             </div>
+          )}
+
+          {selectedStudent && (
+             <StudentProfileModal student={selectedStudent} onClose={() => setSelectedStudent(null)} />
           )}
 
           {sidebarView === 'analytics' && (
