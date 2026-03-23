@@ -53,14 +53,23 @@ public class LeaderboardController {
         if (assessment == null) return ResponseEntity.badRequest().body("Assessment not found");
 
         int points = 0;
+        int totalQuestions = assessment.getQuestions().size();
+        int attended = 0;
+        int correct = 0;
+        int wrong = 0;
+
         if (assessment.getType().name().equals("QUIZ")) {
             if (payload.containsKey("answers")) {
                 Map<String, Object> answers = (Map<String, Object>) payload.get("answers");
+                attended = answers.size();
                 for (com.example.placement_test_system.model.Question q : assessment.getQuestions()) {
                     if (answers.containsKey(q.getId().toString())) {
                         String userAns = answers.get(q.getId().toString()).toString();
                         if (q.getCorrectAnswer() != null && q.getCorrectAnswer().equals(userAns)) {
                             points += q.getPoints();
+                            correct++;
+                        } else {
+                            wrong++;
                         }
                     }
                 }
@@ -85,6 +94,10 @@ public class LeaderboardController {
                             } catch (Exception e) {}
                         }
                         points += (q.getPoints() * passedCases) / q.getTestCases().size();
+                        correct = passedCases;
+                        totalQuestions = q.getTestCases().size();
+                        wrong = totalQuestions - correct;
+                        attended = totalQuestions;
                     }
                 }
             }
@@ -116,6 +129,12 @@ public class LeaderboardController {
         // Broadcast a leaderboard update
         messagingTemplate.convertAndSend("/topic/leaderboard/" + assessmentId, "UPDATE");
 
-        return ResponseEntity.ok().build();
+        return ResponseEntity.ok(Map.of(
+            "points", points,
+            "totalQuestions", totalQuestions,
+            "attended", attended,
+            "correct", correct,
+            "wrong", wrong
+        ));
     }
 }
