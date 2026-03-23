@@ -40,9 +40,9 @@ export default function Login() {
         throw new Error(data.message || 'Invalid Credentials');
       }
       
-      localStorage.setItem('token', data.token);
-      localStorage.setItem('mustChangePassword', data.mustChangePassword);
-      localStorage.setItem('role', data.role);
+      sessionStorage.setItem('token', data.token);
+      sessionStorage.setItem('mustChangePassword', data.mustChangePassword);
+      sessionStorage.setItem('role', data.role);
       
       if (data.role === 'ROLE_ADMIN' || data.role === 'ROLE_SUPER_ADMIN') {
         navigate('/admin');

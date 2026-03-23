@@ -21,9 +21,9 @@ public class PlacementTestSystemApplication {
 	@Bean
 	CommandLineRunner run(UserRepository userRepository, PasswordEncoder passwordEncoder) {
 		return args -> {
-			if (!userRepository.existsByEmail("admin@gcee.ac.in")) {
+			if (!userRepository.existsByEmail("superadmin@gcee.ac.in")) {
 				User admin = User.builder()
-						.email("admin@gcee.ac.in")
+						.email("superadmin@gcee.ac.in")
 						.fullName("System Administrator")
 						.password(passwordEncoder.encode("password"))
 						.role(Role.ROLE_SUPER_ADMIN)

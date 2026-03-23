@@ -78,7 +78,7 @@ export default function AssessmentEnvironment() {
               setLanguage(allowed[0]);
               
               // Restore Auto-saved code
-              const savedCode = localStorage.getItem(`assessment_${id}_code`);
+              const savedCode = sessionStorage.getItem(`assessment_${id}_code`);
               if (savedCode) setCode(savedCode);
               else setCode(CODE_BOILERPLATES[allowed[0].value]);
             }
@@ -86,7 +86,7 @@ export default function AssessmentEnvironment() {
           
           // Restore Auto-saved quiz answers
           if (data.type === 'QUIZ') {
-             const savedAnswers = localStorage.getItem(`assessment_${id}_quizAnswers`);
+             const savedAnswers = sessionStorage.getItem(`assessment_${id}_quizAnswers`);
              if (savedAnswers) {
                 try { setQuizAnswers(JSON.parse(savedAnswers)); } catch (e) {}
              }
@@ -105,7 +105,7 @@ export default function AssessmentEnvironment() {
       stompClient.current = client;
 
       // Check Attempt Limit
-      const token = localStorage.getItem('token');
+      const token = sessionStorage.getItem('token');
       if (token) {
         fetch(`http://localhost:8081/api/v1/leaderboard/check/${id}`, {
            headers: { 'Authorization': `Bearer ${token}` }
@@ -120,17 +120,7 @@ export default function AssessmentEnvironment() {
     return () => stompClient.current?.disconnect();
   }, [id]);
 
-  // Boilerplate application when language changes
-  useEffect(() => {
-    if (language && availableLanguages.length > 0) {
-      // Apply boilerplate if code is empty or matches another existing boilerplate
-      const isCodeEmptyOrBoilerplate = !code.trim() || Object.values(CODE_BOILERPLATES).some(bp => bp === code);
-      if (isCodeEmptyOrBoilerplate) {
-        setCode(CODE_BOILERPLATES[language.value] || '');
-      }
-    }
-  }, [language]);
-
+  // Boilerplate application is now handled explicitly in handleLanguageChange
   const fetchLeaderboard = async () => {
     try {
       const res = await fetch(`http://localhost:8081/api/v1/leaderboard/${id}`);
@@ -194,16 +184,25 @@ export default function AssessmentEnvironment() {
     const handleVisibility = () => { 
       if (document.hidden) {
         handleViolation('Tab Switching Detected! Auto-submit in 10 seconds if not restored.');
-        focusTimerRef.current = setTimeout(() => {
-          submitCode(true);
-        }, 10000);
+        focusTimerRef.current = setTimeout(() => { submitCode(true); }, 10000);
       } else {
         if (focusTimerRef.current) {
           clearTimeout(focusTimerRef.current);
           focusTimerRef.current = null;
-          setToastMessage({ title: 'Focus Restored', type: 'success' });
         }
       }
+    };
+
+    const handleBlur = () => {
+      if (document.hasFocus && !document.hasFocus()) {
+         handleViolation('Window Focus Lost (Alt+Tab or clicked outside)');
+      }
+    };
+
+    const handleBeforeUnload = (e) => {
+      e.preventDefault();
+      e.returnValue = 'Warning: Are you sure you want to leave? Your progress may be automatically submitted!';
+      return '';
     };
 
     document.addEventListener('contextmenu', preventDefault);
@@ -212,6 +211,8 @@ export default function AssessmentEnvironment() {
     document.addEventListener('cut', preventDefault);
     document.addEventListener('keydown', handleKeyDown);
     document.addEventListener('visibilitychange', handleVisibility);
+    window.addEventListener('blur', handleBlur);
+    window.addEventListener('beforeunload', handleBeforeUnload);
 
     return () => {
       document.removeEventListener('contextmenu', preventDefault);
@@ -220,6 +221,8 @@ export default function AssessmentEnvironment() {
       document.removeEventListener('cut', preventDefault);
       document.removeEventListener('keydown', handleKeyDown);
       document.removeEventListener('visibilitychange', handleVisibility);
+      window.removeEventListener('blur', handleBlur);
+      window.removeEventListener('beforeunload', handleBeforeUnload);
     };
   }, [assessment, hasStarted, navigate]);
 
@@ -277,9 +280,9 @@ export default function AssessmentEnvironment() {
     if (!hasStarted || !assessment) return;
     const interval = setInterval(() => {
       if (assessment.type === 'CODING') {
-        localStorage.setItem(`assessment_${id}_code`, code);
+        sessionStorage.setItem(`assessment_${id}_code`, code);
       } else if (assessment.type === 'QUIZ') {
-        localStorage.setItem(`assessment_${id}_quizAnswers`, JSON.stringify(quizAnswers));
+        sessionStorage.setItem(`assessment_${id}_quizAnswers`, JSON.stringify(quizAnswers));
       }
     }, 30000);
     return () => clearInterval(interval);
@@ -292,8 +295,30 @@ export default function AssessmentEnvironment() {
   };
 
   const handleLanguageChange = (e) => {
-    const selectedObj = availableLanguages.find(l => l.value === e.target.value);
-    if (selectedObj) setLanguage(selectedObj);
+    const targetLangValue = e.target.value;
+    const selectedObj = availableLanguages.find(l => l.value === targetLangValue);
+    if (!selectedObj) return;
+
+    const isBoilerplate = !code.trim() || Object.values(CODE_BOILERPLATES).some(bp => bp.trim() === code.trim());
+    
+    if (isBoilerplate) {
+      setCode(CODE_BOILERPLATES[selectedObj.value] || '');
+      setLanguage(selectedObj);
+    } else {
+      setModalConfig({
+        title: 'Change Language?',
+        message: 'Changing the language will reset your code to the new boilerplate and you will lose your current work. Are you sure?',
+        type: 'confirm',
+        confirmText: 'Reset Code & Change',
+        cancelText: 'Cancel',
+        onConfirm: () => {
+          setCode(CODE_BOILERPLATES[selectedObj.value] || '');
+          setLanguage(selectedObj);
+          setModalConfig(null);
+        },
+        onCancel: () => setModalConfig(null)
+      });
+    }
   };
 
   const runCode = async () => {
@@ -306,7 +331,7 @@ export default function AssessmentEnvironment() {
     setOutput('Executing code on secure server...');
     
     try {
-      const token = localStorage.getItem('token');
+      const token = sessionStorage.getItem('token');
       const response = await fetch('http://localhost:8081/api/v1/code/run', {
         method: 'POST',
         headers: { 
@@ -351,7 +376,7 @@ export default function AssessmentEnvironment() {
     const finalise = async () => {
         // Submit to leaderboard backend
         try {
-            const token = localStorage.getItem('token');
+            const token = sessionStorage.getItem('token');
             // Score calculation is now securely processed on the backend
             const res = await fetch('http://localhost:8081/api/v1/leaderboard/submit', {
                method: 'POST',

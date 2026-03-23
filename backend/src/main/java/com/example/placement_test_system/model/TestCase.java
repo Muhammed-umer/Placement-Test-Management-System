@@ -19,5 +19,6 @@ public class TestCase {
     @Column(columnDefinition = "TEXT")
     private String expectedOutput;
 
+    @com.fasterxml.jackson.annotation.JsonProperty("isSample")
     private boolean isSample; // True if student can see it, False if hidden for grading
 }

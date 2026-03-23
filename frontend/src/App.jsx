@@ -11,8 +11,8 @@ import { SECURITY_CONFIG } from './config/security';
 
 // Protected Route Wrapper
 const ProtectedRoute = ({ children }) => {
-  const token = localStorage.getItem('token');
-  const mustChangePassword = localStorage.getItem('mustChangePassword') === 'true';
+  const token = sessionStorage.getItem('token');
+  const mustChangePassword = sessionStorage.getItem('mustChangePassword') === 'true';
   const location = useLocation();
 
   if (!token) {

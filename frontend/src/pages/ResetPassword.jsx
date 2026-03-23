@@ -27,7 +27,7 @@ export default function ResetPassword() {
 
     setIsSubmitting(true);
     try {
-      const token = localStorage.getItem('token');
+      const token = sessionStorage.getItem('token');
       const res = await fetch('http://localhost:8081/api/v1/auth/reset-password', {
         method: 'POST',
         headers: {
@@ -40,7 +40,7 @@ export default function ResetPassword() {
       if (res.ok) {
         setSuccess(true);
         // Clear the mustChangePassword flag locally
-        localStorage.setItem('mustChangePassword', 'false');
+        sessionStorage.setItem('mustChangePassword', 'false');
         setTimeout(() => {
           navigate('/dashboard');
         }, 2000);

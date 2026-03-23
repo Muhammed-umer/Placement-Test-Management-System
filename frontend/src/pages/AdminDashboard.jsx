@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   Globe, Save, PlusCircle, Trash2, Code, CheckCircle2,
   ArrowLeft, ArrowRight, RefreshCw, Settings, ListChecks, Edit3, UploadCloud, Download,
-  LayoutDashboard, History, Menu, X, Users, Search, SlidersHorizontal
+  LayoutDashboard, History, Menu, X, Users, Search, SlidersHorizontal, BarChart3, Sparkles, ShieldAlert
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
@@ -98,7 +98,7 @@ export default function AdminDashboard() {
   const [sidebarView, setSidebarView] = useState('overview'); // overview, contests, quizzes, history, students
   const [activeTab, setActiveTab] = useState('details');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [userRole, setUserRole] = useState(localStorage.getItem('role') || '');
+  const [userRole, setUserRole] = useState(sessionStorage.getItem('role') || '');
   const [selectedStudent, setSelectedStudent] = useState(null);
   const [adminEmailInput, setAdminEmailInput] = useState('');
   const [adminsList, setAdminsList] = useState([]);
@@ -133,6 +133,78 @@ export default function AdminDashboard() {
   const [maxAttempts, setMaxAttempts] = useState(1);
   const [contestUrl, setContestUrl] = useState('');
   const [questions, setQuestions] = useState([]);
+
+  // AI Generation State
+  const [aiModalOpen, setAiModalOpen] = useState(false);
+  const [aiTopic, setAiTopic] = useState('');
+  const [aiCount, setAiCount] = useState(1);
+  const [aiDifficulty, setAiDifficulty] = useState('Medium');
+  const [isAiGenerating, setIsAiGenerating] = useState(false);
+
+  const generateQuestionsWithAI = async () => {
+    if(!aiTopic) return setToastMessage({ title: 'Topic is required', type: 'error' });
+    setIsAiGenerating(true);
+    try {
+      const token = sessionStorage.getItem('token');
+      const res = await fetch('http://localhost:8081/api/v1/ai/generate', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+        },
+        body: JSON.stringify({
+            topic: aiTopic,
+            numQuestions: Number(aiCount),
+            difficulty: aiDifficulty,
+            type: type
+        })
+      });
+      if(res.ok) {
+        const generated = await res.json();
+        if(Array.isArray(generated)) {
+            setQuestions([...questions, ...generated]);
+            setToastMessage({ title: 'AI successfully generated questions!', type: 'success' });
+            setAiModalOpen(false);
+        } else {
+            setToastMessage({ title: 'Unexpected AI response format.', type: 'error' });
+        }
+      } else {
+        setToastMessage({ title: 'AI generation failed.', type: 'error' });
+      }
+    } catch (err) {
+      console.error(err);
+      setToastMessage({ title: 'AI request failed. Ensure backend is running.', type: 'error' });
+    } finally {
+      setIsAiGenerating(false);
+    }
+  };
+
+  const handleCreateAdmin = async () => {
+    if (!adminEmailInput || !adminEmailInput.includes('@')) {
+      return setToastMessage({ title: 'Please enter a valid email address.', type: 'error' });
+    }
+    try {
+      const token = sessionStorage.getItem('token');
+      const res = await fetch('http://localhost:8081/api/v1/admin/create-admin', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+        },
+        body: JSON.stringify({ email: adminEmailInput })
+      });
+      if (res.ok) {
+        setToastMessage({ title: 'Admin created successfully. Default password is Admin@123', type: 'success' });
+        setAdminEmailInput('');
+        fetchAdmins();
+      } else {
+        const err = await res.text();
+        setToastMessage({ title: err || 'Failed to create admin.', type: 'error' });
+      }
+    } catch (e) {
+      setToastMessage({ title: 'Error creating admin.', type: 'error' });
+    }
+  };
 
   useEffect(() => {
     fetchContests();
@@ -180,7 +252,7 @@ export default function AdminDashboard() {
 
   const fetchStudents = async () => {
     try {
-      const token = localStorage.getItem('token');
+      const token = sessionStorage.getItem('token');
       const res = await fetch('http://localhost:8081/api/v1/admin/students', {
         headers: { ...(token ? { 'Authorization': `Bearer ${token}` } : {}) }
       });
@@ -190,7 +262,7 @@ export default function AdminDashboard() {
 
   const fetchAdmins = async () => {
     try {
-      const token = localStorage.getItem('token');
+      const token = sessionStorage.getItem('token');
       const res = await fetch('http://localhost:8081/api/v1/admin/admins', {
         headers: { ...(token ? { 'Authorization': `Bearer ${token}` } : {}) }
       });
@@ -235,7 +307,7 @@ export default function AdminDashboard() {
 
   const confirmDelete = async () => {
     try {
-      const token = localStorage.getItem('token');
+      const token = sessionStorage.getItem('token');
       const res = await fetch(`http://localhost:8081/api/v1/assessments/${deleteConfirmId}`, {
         method: 'DELETE',
         headers: {
@@ -267,7 +339,7 @@ export default function AdminDashboard() {
     formData.append('file', file);
     
     try {
-      const token = localStorage.getItem('token');
+      const token = sessionStorage.getItem('token');
       const res = await fetch('http://localhost:8081/api/v1/admin/onboard', {
         method: 'POST',
         headers: {
@@ -414,7 +486,7 @@ export default function AdminDashboard() {
     };
 
     try {
-      const token = localStorage.getItem('token');
+      const token = sessionStorage.getItem('token');
       const res = await fetch('http://localhost:8081/api/v1/assessments', {
         method: 'POST',
         headers: { 
@@ -564,6 +636,13 @@ export default function AdminDashboard() {
             <button onClick={() => {setSidebarView('history'); setIsSidebarOpen(false);}} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition-all ${sidebarView === 'history' ? 'bg-[#007ACC] text-white shadow-lg shadow-[#007ACC]/30' : 'text-[#2C3E50]/70 hover:text-[#2C3E50] hover:bg-[#F4F4F4]'}`}>
               <History size={20} /> History
             </button>
+            <button onClick={() => {
+              setSidebarView('analytics'); 
+              setIsSidebarOpen(false);
+              fetchStudents(); // Make sure students are loaded for analytics
+            }} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition-all ${sidebarView === 'analytics' ? 'bg-[#007ACC] text-white shadow-lg shadow-[#007ACC]/30' : 'text-[#2C3E50]/70 hover:text-[#2C3E50] hover:bg-[#F4F4F4]'}`}>
+              <BarChart3 size={20} /> Analytics
+            </button>
             <button onClick={() => {setSidebarView('students'); setIsSidebarOpen(false);}} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition-all ${sidebarView === 'students' ? 'bg-[#007ACC] text-white shadow-lg shadow-[#007ACC]/30' : 'text-[#2C3E50]/70 hover:text-[#2C3E50] hover:bg-[#F4F4F4]'}`}>
               <Users size={20} /> Onboard Students
             </button>
@@ -582,6 +661,53 @@ export default function AdminDashboard() {
 
         {/* Main Content Area */}
         <main className="flex-1 p-6 md:p-10 w-full overflow-y-auto max-h-screen relative z-10 pb-20">
+          
+          {/* AI Generation Modal overlay outside view switcher */}
+          <AnimatePresence>
+            {aiModalOpen && (
+              <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+                <div className="absolute inset-0 bg-[#2C3E50]/60 backdrop-blur-sm" onClick={() => setAiModalOpen(false)}></div>
+                <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} className="relative w-full max-w-md bg-white rounded-3xl shadow-2xl p-8 z-10 border border-[#007ACC]/20">
+                  <button onClick={() => setAiModalOpen(false)} className="absolute top-4 right-4 text-slate-400 hover:text-slate-600">
+                    <X size={20} />
+                  </button>
+                  <div className="flex items-center gap-3 mb-6">
+                    <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-[#007ACC] to-brand-500 flex items-center justify-center text-white shadow-lg shadow-[#007ACC]/30">
+                      <Sparkles size={24} />
+                    </div>
+                    <h3 className="text-2xl font-black text-[#2C3E50]">AI Generator</h3>
+                  </div>
+                  
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-sm font-bold text-[#2C3E50] mb-1">Topic</label>
+                      <input type="text" value={aiTopic} onChange={e => setAiTopic(e.target.value)} placeholder="e.g. Binary Trees, OOP concepts..." className="w-full p-3 rounded-xl border border-slate-200 outline-none focus:border-[#007ACC]" />
+                    </div>
+                    <div className="flex gap-4">
+                      <div className="flex-1">
+                        <label className="block text-sm font-bold text-[#2C3E50] mb-1">Count</label>
+                        <input type="number" min="1" max="100" value={aiCount} onChange={e => setAiCount(e.target.value)} className="w-full p-3 rounded-xl border border-slate-200 outline-none focus:border-[#007ACC]" />
+                      </div>
+                      <div className="flex-1">
+                        <label className="block text-sm font-bold text-[#2C3E50] mb-1">Difficulty</label>
+                        <select value={aiDifficulty} onChange={e => setAiDifficulty(e.target.value)} className="w-full p-3 rounded-xl border border-slate-200 outline-none focus:border-[#007ACC] bg-white">
+                          <option>Easy</option>
+                          <option>Medium</option>
+                          <option>Hard</option>
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <button onClick={generateQuestionsWithAI} disabled={isAiGenerating} className={`mt-6 w-full py-3 rounded-xl font-black text-white uppercase tracking-wider text-sm flex items-center justify-center gap-2 transition-all ${isAiGenerating ? 'bg-slate-400 cursor-not-allowed' : 'bg-gradient-to-r from-[#007ACC] to-brand-500 hover:shadow-lg hover:shadow-[#007ACC]/30'}`}>
+                    {isAiGenerating ? <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <Sparkles size={18} />}
+                    {isAiGenerating ? 'Generating...' : 'Generate Magic'}
+                  </button>
+                </motion.div>
+              </div>
+            )}
+          </AnimatePresence>
+
           {view === 'home' ? (
             <>
           <header className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-10 mt-8 md:mt-0">
@@ -754,6 +880,37 @@ export default function AdminDashboard() {
             </div>
           )}
 
+          {sidebarView === 'analytics' && (
+             <div className="space-y-6">
+                <h2 className="text-2xl font-black text-[#2C3E50] flex items-center gap-2">
+                  <BarChart3 size={28} className="text-[#007ACC]" /> Platform Analytics 
+                </h2>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-6">
+                   <div className="bg-[#FFFFFF] p-8 rounded-3xl flex flex-col justify-center items-center border-2 border-[#4CAF50] shadow-xl hover:shadow-[#007ACC]/20 hover:border-[#007ACC] transition-all">
+                     <div className="w-16 h-16 bg-[#F4F4F4] rounded-2xl flex items-center justify-center mb-6 text-[#007ACC]">
+                       <Users size={32} />
+                     </div>
+                     <div className="text-5xl font-black text-[#2C3E50]">{studentsList.length}</div>
+                     <div className="text-xs font-bold text-[#007ACC] tracking-widest uppercase mt-4 bg-[#007ACC]/10 px-4 py-1.5 rounded-full border border-[#007ACC]/20">Registered Students</div>
+                   </div>
+                   <div className="bg-[#FFFFFF] p-8 rounded-3xl flex flex-col justify-center items-center border-2 border-[#4CAF50] shadow-xl hover:shadow-[#007ACC]/20 hover:border-[#007ACC] transition-all">
+                     <div className="w-16 h-16 bg-[#F4F4F4] rounded-2xl flex items-center justify-center mb-6 text-[#007ACC]">
+                       <Code size={32} />
+                     </div>
+                     <div className="text-5xl font-black text-[#2C3E50]">{contests.length}</div>
+                     <div className="text-xs font-bold text-[#007ACC] tracking-widest uppercase mt-4 bg-[#007ACC]/10 px-4 py-1.5 rounded-full border border-[#007ACC]/20">Total Assessments</div>
+                   </div>
+                   <div className="bg-[#FFFFFF] p-8 rounded-3xl flex flex-col justify-center items-center border-2 border-[#4CAF50] shadow-xl hover:shadow-[#007ACC]/20 hover:border-[#007ACC] transition-all">
+                     <div className="w-16 h-16 bg-[#F4F4F4] rounded-2xl flex items-center justify-center mb-6 text-[#007ACC]">
+                       <ListChecks size={32} />
+                     </div>
+                     <div className="text-5xl font-black text-[#2C3E50]">{contests.filter(c => c.type === 'QUIZ').length}</div>
+                     <div className="text-xs font-bold text-[#007ACC] tracking-widest uppercase mt-4 bg-[#007ACC]/10 px-4 py-1.5 rounded-full border border-[#007ACC]/20">Total Quizzes</div>
+                   </div>
+                </div>
+             </div>
+          )}
+
           {sidebarView === 'submissions' && (
              <div className="space-y-6">
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -828,6 +985,53 @@ export default function AdminDashboard() {
                 </div>
              </div>
           )}
+
+          {sidebarView === 'admins' && userRole === 'ROLE_SUPER_ADMIN' && (
+             <div className="space-y-8">
+                <div className="glass-panel p-8 rounded-2xl flex flex-col gap-4 border border-[#4CAF50] shadow-sm bg-white">
+                   <div className="flex items-center gap-3">
+                      <ShieldAlert size={28} className="text-[#F0A500]" />
+                      <h2 className="text-2xl font-black text-[#2C3E50]">Superadmin Access</h2>
+                   </div>
+                   <p className="text-sm font-bold text-slate-500">Create new admin accounts. Newly created admins will automatically use the default password <span className="bg-brand-50 text-brand-700 px-2 py-0.5 rounded">Admin@123</span></p>
+                   <div className="flex flex-col md:flex-row gap-4 mt-2">
+                      <input type="email" placeholder="Enter new admin email (e.g. admin2@gcee.ac.in)" value={adminEmailInput} onChange={e => setAdminEmailInput(e.target.value)} className="flex-1 w-full bg-[#F4F4F4] border border-slate-200 focus:border-[#007ACC] p-4 rounded-xl text-sm font-bold outline-none" />
+                      <button onClick={handleCreateAdmin} className="bg-gradient-to-r from-[#007ACC] to-brand-500 text-white font-black hover:shadow-lg hover:shadow-[#007ACC]/30 px-6 py-4 rounded-xl flex items-center justify-center gap-2 uppercase tracking-widest text-xs transition-all shadow-[#007ACC]/20 whitespace-nowrap">
+                         <PlusCircle size={18} /> Create Admin
+                      </button>
+                   </div>
+                </div>
+
+                <div className="glass-panel bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+                   <h3 className="text-xl font-bold text-[#2C3E50] mb-6 flex items-center gap-2"><Users size={20} className="text-[#007ACC]" /> Platform Admins</h3>
+                   <div className="bg-slate-50 rounded-xl overflow-hidden border border-slate-200">
+                      <table className="w-full text-left">
+                         <thead className="bg-slate-100 font-bold text-slate-500 uppercase tracking-widest text-[10px] border-b border-slate-200">
+                            <tr><th className="px-6 py-4">Admin Email</th><th className="px-6 py-4">Role</th><th className="px-6 py-4">Status</th></tr>
+                         </thead>
+                         <tbody className="divide-y divide-slate-100 font-bold text-sm">
+                            {adminsList.map((adm, i) => (
+                               <tr key={i} className="hover:bg-white transition-colors">
+                                  <td className="px-6 py-4 text-[#2C3E50]">{adm.email}</td>
+                                  <td className="px-6 py-4">
+                                     <span className={`px-3 py-1 rounded-full text-[10px] tracking-wide uppercase border ${adm.role === 'ROLE_SUPER_ADMIN' ? 'bg-purple-50 text-purple-700 border-purple-200' : 'bg-blue-50 text-blue-700 border-blue-200'}`}>
+                                       {adm.role}
+                                     </span>
+                                  </td>
+                                  <td className="px-6 py-4">
+                                     <span className="bg-green-50 text-green-700 font-bold px-3 py-1 rounded-full text-[10px] tracking-wide uppercase border border-green-100">Active</span>
+                                  </td>
+                               </tr>
+                            ))}
+                            {adminsList.length === 0 && (
+                               <tr><td colSpan="3" className="px-6 py-8 text-center text-slate-400">Loading admins...</td></tr>
+                            )}
+                         </tbody>
+                      </table>
+                   </div>
+                </div>
+             </div>
+          )}
           </motion.div>
           </>
           ) : (
@@ -860,6 +1064,13 @@ export default function AdminDashboard() {
           <AnimatePresence>
             {activeTab === 'challenges' && (
               <div className="flex gap-2">
+                <motion.button 
+                  initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.9 }}
+                  onClick={() => setAiModalOpen(true)} 
+                  className="bg-gradient-to-r from-[#007ACC] to-brand-500 text-white px-5 py-2.5 rounded-xl flex items-center gap-2 hover:shadow-lg transition-colors font-black uppercase tracking-widest text-xs shadow-[#007ACC]/30 border border-transparent"
+                >
+                  <Sparkles size={18} /> Auto-Generate
+                </motion.button>
                 <input type="file" accept=".json" ref={fileInputRef} onChange={handleBulkUpload} className="hidden" />
                 <motion.button 
                   initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.9 }}

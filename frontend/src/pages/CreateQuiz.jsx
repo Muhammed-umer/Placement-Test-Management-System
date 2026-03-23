@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Globe, Save, PlusCircle, Trash2, ListChecks, CheckCircle2, ArrowLeft, ArrowRight, RefreshCw, UploadCloud,
-  Menu, X, LayoutDashboard, Code, History, Users
+  Menu, X, LayoutDashboard, Code, History, Users, Sparkles
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
@@ -22,6 +22,51 @@ export default function CreateQuiz() {
   const [maxAttempts, setMaxAttempts] = useState(1);
 
   const [questions, setQuestions] = useState([]);
+
+  // AI Generation State
+  const [aiModalOpen, setAiModalOpen] = useState(false);
+  const [aiTopic, setAiTopic] = useState('');
+  const [aiCount, setAiCount] = useState(5);
+  const [aiDifficulty, setAiDifficulty] = useState('Medium');
+  const [isAiGenerating, setIsAiGenerating] = useState(false);
+
+  const generateQuestionsWithAI = async () => {
+    if(!aiTopic) return setToastMessage({ title: 'Topic is required', type: 'error' });
+    setIsAiGenerating(true);
+    try {
+      const token = sessionStorage.getItem('token');
+      const res = await fetch('http://localhost:8081/api/v1/ai/generate', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+        },
+        body: JSON.stringify({
+            topic: aiTopic,
+            numQuestions: Number(aiCount),
+            difficulty: aiDifficulty,
+            type: 'QUIZ'
+        })
+      });
+      if(res.ok) {
+        const generated = await res.json();
+        if(Array.isArray(generated)) {
+            setQuestions([...questions, ...generated]);
+            setToastMessage({ title: 'AI successfully generated questions!', type: 'success' });
+            setAiModalOpen(false);
+        } else {
+            setToastMessage({ title: 'Unexpected AI response format.', type: 'error' });
+        }
+      } else {
+        setToastMessage({ title: 'AI generation failed.', type: 'error' });
+      }
+    } catch (err) {
+      console.error(err);
+      setToastMessage({ title: 'AI request failed.', type: 'error' });
+    } finally {
+      setIsAiGenerating(false);
+    }
+  };
 
   useEffect(() => {
     if (contestName) {
@@ -132,7 +177,7 @@ export default function CreateQuiz() {
     };
 
     try {
-      const token = localStorage.getItem('token');
+      const token = sessionStorage.getItem('token');
       const res = await fetch('http://localhost:8081/api/v1/assessments', {
         method: 'POST',
         headers: { 
@@ -201,6 +246,53 @@ export default function CreateQuiz() {
       </aside>
 
       <main className="flex-1 p-6 md:p-10 w-full overflow-y-auto max-h-screen relative z-10 pb-20">
+        
+        {/* AI Generation Modal */}
+        <AnimatePresence>
+          {aiModalOpen && (
+            <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+              <div className="absolute inset-0 bg-[#2C3E50]/60 backdrop-blur-sm" onClick={() => setAiModalOpen(false)}></div>
+              <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} className="relative w-full max-w-md bg-white rounded-3xl shadow-2xl p-8 z-10 border border-[#007ACC]/20">
+                <button onClick={() => setAiModalOpen(false)} className="absolute top-4 right-4 text-slate-400 hover:text-slate-600">
+                  <X size={20} />
+                </button>
+                <div className="flex items-center gap-3 mb-6">
+                  <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-[#007ACC] to-brand-500 flex items-center justify-center text-white shadow-lg shadow-[#007ACC]/30">
+                    <Sparkles size={24} />
+                  </div>
+                  <h3 className="text-2xl font-black text-[#2C3E50]">AI Generator</h3>
+                </div>
+                
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-bold text-[#2C3E50] mb-1">Topic</label>
+                    <input type="text" value={aiTopic} onChange={e => setAiTopic(e.target.value)} placeholder="e.g. JavaScript Closures..." className="w-full p-3 rounded-xl border border-slate-200 outline-none focus:border-[#007ACC]" />
+                  </div>
+                  <div className="flex gap-4">
+                    <div className="flex-1">
+                      <label className="block text-sm font-bold text-[#2C3E50] mb-1">Questions</label>
+                      <input type="number" min="1" max="20" value={aiCount} onChange={e => setAiCount(e.target.value)} className="w-full p-3 rounded-xl border border-slate-200 outline-none focus:border-[#007ACC]" />
+                    </div>
+                    <div className="flex-1">
+                      <label className="block text-sm font-bold text-[#2C3E50] mb-1">Difficulty</label>
+                      <select value={aiDifficulty} onChange={e => setAiDifficulty(e.target.value)} className="w-full p-3 rounded-xl border border-slate-200 outline-none focus:border-[#007ACC] bg-white">
+                        <option>Easy</option>
+                        <option>Medium</option>
+                        <option>Hard</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+                
+                <button onClick={generateQuestionsWithAI} disabled={isAiGenerating} className={`mt-6 w-full py-3 rounded-xl font-black text-white uppercase tracking-wider text-sm flex items-center justify-center gap-2 transition-all ${isAiGenerating ? 'bg-slate-400 cursor-not-allowed' : 'bg-gradient-to-r from-[#007ACC] to-brand-500 hover:shadow-lg hover:shadow-[#007ACC]/30'}`}>
+                  {isAiGenerating ? <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <Sparkles size={18} />}
+                  {isAiGenerating ? 'Generating...' : 'Generate Magic'}
+                </button>
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>
+
         <div className="max-w-5xl mx-auto">
           {/* STICKY TOPBAR */}
           <div className="sticky top-0 z-50 bg-[#F4F4F4]/90 backdrop-blur-sm pt-4 pb-4 border-b-2 border-[#4CAF50]/30 mb-8 flex flex-col md:flex-row md:items-center justify-between gap-4 px-4 -mx-4 shadow-sm md:px-8 md:-mx-8">
@@ -229,6 +321,13 @@ export default function CreateQuiz() {
           <AnimatePresence>
             {activeTab === 'questions' && (
               <div className="flex gap-2">
+                <motion.button 
+                  initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.9 }}
+                  onClick={() => setAiModalOpen(true)} 
+                  className="bg-gradient-to-r from-[#007ACC] to-brand-500 text-white px-5 py-2.5 rounded-xl flex items-center gap-2 hover:shadow-lg transition-colors font-black uppercase tracking-widest text-xs shadow-[#007ACC]/30 border border-transparent"
+                >
+                  <Sparkles size={18} /> Auto-Generate
+                </motion.button>
                 <input type="file" accept=".json" ref={fileInputRef} onChange={handleBulkUpload} className="hidden" />
                 <motion.button 
                   initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.9 }}

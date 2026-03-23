@@ -42,7 +42,7 @@ export default function Dashboard() {
   const fetchProfile = async () => {
     try {
       const res = await fetch('http://localhost:8081/api/v1/profile', {
-        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+        headers: { 'Authorization': `Bearer ${sessionStorage.getItem('token')}` }
       });
       if (res.ok) {
         const data = await res.json();
@@ -79,7 +79,7 @@ export default function Dashboard() {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
+          'Authorization': `Bearer ${sessionStorage.getItem('token')}`
         },
         body: JSON.stringify(payload)
       });
