@@ -326,13 +326,18 @@ export default function AssessmentEnvironment() {
       } else {
          const decodeB64 = (str) => {
              if (!str) return null;
-             try { return atob(str); } catch(e) { return str; }
+             try { 
+                 const b64 = atob(str);
+                 try { return decodeURIComponent(escape(b64)); } catch (e) { return b64; }
+             } catch(e) { return str; }
          };
          const stdout = decodeB64(data.stdout);
          const stderr = decodeB64(data.stderr);
          const compileOutput = decodeB64(data.compile_output);
+         const message = decodeB64(data.message);
          
-         const decodedOutput = stdout || stderr || compileOutput || 'Program ran successfully with no output.';
+         const statusDesc = data.status?.description && data.status.id > 3 ? `Status: ${data.status.description}\n\n` : '';
+         const decodedOutput = statusDesc + (stdout || stderr || compileOutput || message || 'Program ran successfully with no output.');
          setOutput(decodedOutput);
       }
     } catch (err) {
@@ -348,7 +353,7 @@ export default function AssessmentEnvironment() {
         try {
             const token = localStorage.getItem('token');
             // Score calculation is now securely processed on the backend
-            await fetch('http://localhost:8081/api/v1/leaderboard/submit', {
+            const res = await fetch('http://localhost:8081/api/v1/leaderboard/submit', {
                method: 'POST',
                headers: {
                  'Content-Type': 'application/json',
@@ -361,20 +366,35 @@ export default function AssessmentEnvironment() {
                  languageId: language?.id || 54
                })
             });
-        } catch (e) { console.error('Submission error:', e); }
-
-        setModalConfig({
-          title: 'Success',
-          message: 'Assessment submitted securely. Thank you!',
-          type: 'info',
-          confirmText: 'Return to Dashboard',
-          onConfirm: () => {
-             if (document.fullscreenElement) {
-                document.exitFullscreen().catch(err => console.log(err));
-             }
-             navigate('/dashboard');
-          }
-        });
+            const resultData = await res.json();
+            
+            setModalConfig({
+              title: 'Assessment Complete!',
+              message: `You scored ${resultData.points} points.\n\nSummary:\nTotal Questions: ${resultData.totalQuestions}\nAttended: ${resultData.attended}\nCorrect: ${resultData.correct}\nWrong: ${resultData.wrong}`,
+              type: 'info',
+              confirmText: 'Return to Dashboard',
+              onConfirm: () => {
+                 if (document.fullscreenElement) {
+                    document.exitFullscreen().catch(err => console.log(err));
+                 }
+                 navigate('/dashboard');
+              }
+            });
+        } catch (e) { 
+            console.error('Submission error:', e); 
+            setModalConfig({
+              title: 'Success',
+              message: 'Assessment submitted securely. Thank you!',
+              type: 'info',
+              confirmText: 'Return to Dashboard',
+              onConfirm: () => {
+                 if (document.fullscreenElement) {
+                    document.exitFullscreen().catch(err => console.log(err));
+                 }
+                 navigate('/dashboard');
+              }
+            });
+        }
     };
 
     if (isAutoSubmit) {
@@ -575,6 +595,26 @@ export default function AssessmentEnvironment() {
                     <p className="mb-4"><strong className="text-[#007ACC] block text-[10px] uppercase tracking-widest font-black mb-1">Input Format</strong> {currentQ?.inputFormat}</p>
                     <p><strong className="text-[#007ACC] block text-[10px] uppercase tracking-widest font-black mb-1">Constraints</strong> {currentQ?.constraints}</p>
                   </div>
+                  
+                  {currentQ?.testCases?.filter(tc => tc.isSample).length > 0 && (
+                    <div className="mt-8">
+                       <h4 className="text-[#2C3E50] font-black text-[10px] uppercase tracking-widest ml-2 mb-4">Sample Test Cases</h4>
+                       <div className="space-y-6">
+                         {currentQ.testCases.filter(tc => tc.isSample).map((tc, idx) => (
+                           <div key={idx} className="p-6 bg-[#FFFFFF] rounded-2xl text-sm border-2 border-[#4CAF50]/50 font-sans shadow-sm">
+                             <div className="mb-4">
+                               <strong className="text-[#007ACC] block text-[10px] uppercase tracking-widest font-black mb-2">Input {idx + 1}</strong>
+                               <pre className="bg-[#F4F4F4] p-4 rounded-xl text-xs text-[#2C3E50] font-mono overflow-auto">{tc.input}</pre>
+                             </div>
+                             <div>
+                               <strong className="text-[#007ACC] block text-[10px] uppercase tracking-widest font-black mb-2">Expected Output {idx + 1}</strong>
+                               <pre className="bg-[#F4F4F4] p-4 rounded-xl text-xs text-[#2C3E50] font-mono overflow-auto">{tc.expectedOutput}</pre>
+                             </div>
+                           </div>
+                         ))}
+                       </div>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -588,13 +628,13 @@ export default function AssessmentEnvironment() {
                     <select 
                       value={language.value} 
                       onChange={handleLanguageChange} 
-                      className="appearance-none bg-[#FFFFFF] border-2 border-[#4CAF50] text-[#2C3E50] font-black text-xs pl-4 pr-10 py-2.5 rounded-xl outline-none focus:border-[#007ACC] focus:ring-4 focus:ring-[#007ACC]/20 transition-all cursor-pointer shadow-sm hover:border-[#007ACC]"
+                      className="appearance-none bg-transparent border-0 text-[#2C3E50] font-black text-xs px-2 pr-6 py-2 outline-none cursor-pointer uppercase tracking-widest hover:text-[#007ACC] transition-colors"
                     >
                       {availableLanguages.map(lang => (
                         <option key={lang.id} value={lang.value}>{lang.name}</option>
                       ))}
                     </select>
-                    <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-[#2C3E50]">
+                    <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center text-[#007ACC]">
                       <svg className="w-4 h-4 fill-current" viewBox="0 0 20 20"><path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"/></svg>
                     </div>
                   </div>
@@ -762,7 +802,7 @@ export default function AssessmentEnvironment() {
         {assessment.type === 'QUIZ' && currentQuestionIdx < questions.length - 1 && (
            <button
              onClick={nextQuestion}
-             className="pointer-events-auto bg-[#FFFFFF] hover:bg-[#F4F4F4] text-[#2C3E50] px-8 py-5 rounded-[1.5rem] font-black tracking-widest uppercase text-xs flex items-center gap-3 transition-all shadow-2xl hover:-translate-y-2 hover:scale-[1.02] border-[3px] border-[#4CAF50]"
+             className="pointer-events-auto bg-transparent hover:bg-[#F4F4F4] text-[#2C3E50] px-8 py-5 rounded-[1.5rem] font-black tracking-widest uppercase text-xs flex items-center gap-3 transition-all hover:-translate-y-2 hover:scale-[1.02] border-[3px] border-[#4CAF50]"
            >
              Next Question <ChevronRight size={18} strokeWidth={3} />
            </button>
@@ -770,9 +810,9 @@ export default function AssessmentEnvironment() {
         
         <button
           onClick={submitCode}
-          className="pointer-events-auto bg-[#007ACC] hover:bg-[#F0A500] text-[#2C3E50] px-10 py-5 rounded-[1.5rem] font-black tracking-widest uppercase text-xs flex items-center gap-3 transition-all shadow-2xl hover:-translate-y-2 hover:scale-[1.02] active:scale-95 shadow-[#007ACC]/40 outline-none border-[3px] border-[#007ACC]"
+          className="pointer-events-auto bg-transparent hover:bg-[#F0A500]/10 text-[#2C3E50] px-10 py-5 rounded-[1.5rem] font-black tracking-widest uppercase text-xs flex items-center gap-3 transition-all hover:-translate-y-2 hover:scale-[1.02] active:scale-95 outline-none border-[3px] border-[#007ACC]"
         >
-          <Save size={18} strokeWidth={3} />
+          <Save size={18} strokeWidth={3} className="text-[#007ACC]" />
           {assessment.type === 'CODING' ? 'Submit Routine' : 'Save Progress'}
         </button>
       </div>

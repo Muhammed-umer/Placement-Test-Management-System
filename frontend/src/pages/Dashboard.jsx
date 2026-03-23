@@ -183,6 +183,17 @@ export default function Dashboard() {
 
       {/* Modern Sidebar */}
       <aside className={`fixed inset-y-0 left-0 z-40 w-64 bg-[#FFFFFF] border-r-4 border-[#4CAF50] transform transition-transform duration-300 ease-in-out md:translate-x-0 md:static md:w-72 flex flex-col ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+        <div className="flex justify-center gap-4 py-4 border-b-4 border-[#F4F4F4] bg-white z-10 sticky top-0">
+           <button onClick={() => window.history.back()} className="p-2.5 rounded-xl bg-[#F4F4F4] text-[#2C3E50] hover:bg-[#007ACC] hover:text-[#FFFFFF] transition-colors shadow-sm border border-[#4CAF50]" title="Go Back">
+              <ArrowLeft size={18} />
+           </button>
+           <button onClick={() => window.location.reload()} className="p-2.5 rounded-xl bg-[#F4F4F4] text-[#2C3E50] hover:bg-[#007ACC] hover:text-[#FFFFFF] transition-colors shadow-sm border border-[#4CAF50]" title="Refresh">
+              <RefreshCw size={18} />
+           </button>
+           <button onClick={() => window.history.forward()} className="p-2.5 rounded-xl bg-[#F4F4F4] text-[#2C3E50] hover:bg-[#007ACC] hover:text-[#FFFFFF] transition-colors shadow-sm border border-[#4CAF50]" title="Go Forward">
+              <ArrowRight size={18} />
+           </button>
+        </div>
         <div className="flex flex-col items-center justify-center p-8 border-b-2 border-[#F4F4F4]">
           <div className="w-20 h-20 bg-[#4CAF50] rounded-full flex items-center justify-center mb-4 border-4 border-[#007ACC] shadow-md relative">
             <UserIcon className="w-10 h-10 text-[#2C3E50]" />
@@ -191,7 +202,7 @@ export default function Dashboard() {
           <h2 className="text-[16px] font-black text-[#2C3E50] truncate w-full text-center">{profile.fullName || 'Student Portal'}</h2>
         </div>
 
-        <nav className="flex-1 px-4 py-6 space-y-3 overflow-y-auto">
+        <nav className="flex-1 px-4 py-3 space-y-3 overflow-y-auto">
           <button onClick={() => {navigate('/dashboard'); setIsSidebarOpen(false);}} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition-all ${!isProfileRoute ? 'bg-[#007ACC] text-white shadow-lg shadow-[#007ACC]/30' : 'text-[#2C3E50]/70 hover:text-[#2C3E50] hover:bg-[#F4F4F4]'}`}>
             <LayoutDashboard size={20} /> Dashboard
           </button>
@@ -203,17 +214,6 @@ export default function Dashboard() {
           <div className="pt-6 mt-6 border-t-2 border-[#F4F4F4]">
              <button onClick={() => {navigate('/login'); setIsSidebarOpen(false);}} className="w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold text-red-500 hover:bg-red-50 hover:text-red-700 transition-colors">
                <X size={20} /> Sign Out
-             </button>
-          </div>
-          <div className="pt-6 mt-2 flex justify-center gap-4">
-             <button onClick={() => window.history.back()} className="p-3 rounded-xl bg-[#F4F4F4] text-[#2C3E50] hover:bg-[#007ACC] hover:text-[#FFFFFF] transition-colors shadow-sm" title="Go Back">
-                <ArrowLeft size={18} />
-             </button>
-             <button onClick={() => window.location.reload()} className="p-3 rounded-xl bg-[#F4F4F4] text-[#2C3E50] hover:bg-[#007ACC] hover:text-[#FFFFFF] transition-colors shadow-sm" title="Refresh">
-                <RefreshCw size={18} />
-             </button>
-             <button onClick={() => window.history.forward()} className="p-3 rounded-xl bg-[#F4F4F4] text-[#2C3E50] hover:bg-[#007ACC] hover:text-[#FFFFFF] transition-colors shadow-sm" title="Go Forward">
-                <ArrowRight size={18} />
              </button>
           </div>
         </nav>
