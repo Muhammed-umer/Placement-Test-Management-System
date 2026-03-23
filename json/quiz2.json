@@ -1,0 +1,35 @@
+[
+    {
+        "questionType": "MCQ",
+        "title": "Which of the following is a Javascript framework?",
+        "description": "Select the correct option from the list.",
+        "options": [
+            "React",
+            "Django",
+            "Laravel",
+            "Flask"
+        ],
+        "correctAnswer": "React",
+        "points": 10
+    },
+    {
+        "questionType": "CHECKBOX",
+        "title": "Select all primary colors.",
+        "description": "Choose multiple if applicable.",
+        "options": [
+            "Red",
+            "Blue",
+            "Green",
+            "Yellow"
+        ],
+        "correctAnswer": "Red, Blue, Yellow",
+        "points": 20
+    },
+    {
+        "questionType": "FILL_UP",
+        "title": "The capital of France is ______.",
+        "description": "Provide the exact name of the city.",
+        "correctAnswer": "Paris",
+        "points": 10
+    }
+]

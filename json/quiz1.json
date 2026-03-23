@@ -1,0 +1,23 @@
+[
+    {
+        "type": "CODING",
+        "title": "Reverse a String",
+        "description": "Write a program that takes a string as input and returns the string reversed.",
+        "inputFormat": "A single line containing a string S.",
+        "outputFormat": "A single line containing the reversed string.",
+        "constraints": "1 <= length of S <= 1000",
+        "points": 50,
+        "testCases": [
+            {
+                "input": "hello",
+                "expectedOutput": "olleh",
+                "isSample": true
+            },
+            {
+                "input": "world",
+                "expectedOutput": "dlrow",
+                "isSample": false
+            }
+        ]
+    }
+]
