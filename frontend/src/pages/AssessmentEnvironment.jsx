@@ -70,7 +70,16 @@ export default function AssessmentEnvironment() {
         .then(res => res.json())
         .then(data => {
           setAssessment(data);
-          setQuestions((data.questions || []).map(q => ({ ...q, status: 'unvisited' })));
+          let fetchedQs = data.questions || [];
+          if (data.type === 'QUIZ') {
+            fetchedQs = fetchedQs.map(q => {
+               if (q.options && q.options.length > 0) {
+                  return { ...q, options: [...q.options].sort(() => Math.random() - 0.5) };
+               }
+               return q;
+            }).sort(() => Math.random() - 0.5);
+          }
+          setQuestions(fetchedQs.map(q => ({ ...q, status: 'unvisited' })));
           if (data.type === 'CODING' && data.allowedLanguages) {
             const allowed = JUDGE0_LANGUAGES.filter(l => data.allowedLanguages.includes(l.value));
             if (allowed.length > 0) {
@@ -233,7 +242,7 @@ export default function AssessmentEnvironment() {
           setIsFullscreen(true);
           setHasStarted(true);
           if (navigator.keyboard && navigator.keyboard.lock) {
-            navigator.keyboard.lock(['Escape']).catch(console.error);
+            navigator.keyboard.lock().catch(console.error); // Locks all system keys including Alt+Tab
           }
         })
         .catch(() => {

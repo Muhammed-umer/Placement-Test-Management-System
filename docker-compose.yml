@@ -65,7 +65,7 @@ services:
 
   workers:
     image: judge0/judge0:1.13.0
-    command: ["./docker/workers"]
+    command: ["./workers"]
     volumes:
       - ./judge0.conf:/judge0.conf:ro
     privileged: true

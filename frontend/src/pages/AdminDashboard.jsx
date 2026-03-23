@@ -6,7 +6,8 @@ import {
   LayoutDashboard, History, Menu, X, Users, Search, SlidersHorizontal, BarChart3, Sparkles, ShieldAlert
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-
+import * as pdfjsLib from 'pdfjs-dist';
+pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
 const StudentProfileModal = ({ student, onClose }) => {
   if (!student) return null;
 
@@ -139,7 +140,30 @@ export default function AdminDashboard() {
   const [aiTopic, setAiTopic] = useState('');
   const [aiCount, setAiCount] = useState(1);
   const [aiDifficulty, setAiDifficulty] = useState('Medium');
+  const [aiNumTestCases, setAiNumTestCases] = useState(5);
   const [isAiGenerating, setIsAiGenerating] = useState(false);
+  const [aiContext, setAiContext] = useState('');
+
+  const handlePdfUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    setToastMessage({ title: 'Extracting PDF text...', type: 'success' });
+    try {
+      const arrayBuffer = await file.arrayBuffer();
+      const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+      let fullText = '';
+      for (let i = 1; i <= pdf.numPages; i++) {
+         const page = await pdf.getPage(i);
+         const textContent = await page.getTextContent();
+         fullText += textContent.items.map(s => s.str).join(' ') + '\n';
+      }
+      setAiContext(fullText.substring(0, 15000));
+      setToastMessage({ title: 'PDF extracted! Ready to generate.', type: 'success' });
+    } catch (err) {
+      console.error(err);
+      setToastMessage({ title: 'Failed to extract PDF.', type: 'error' });
+    }
+  };
 
   const generateQuestionsWithAI = async () => {
     if(!aiTopic) return setToastMessage({ title: 'Topic is required', type: 'error' });
@@ -156,7 +180,9 @@ export default function AdminDashboard() {
             topic: aiTopic,
             numQuestions: Number(aiCount),
             difficulty: aiDifficulty,
-            type: type
+            type: type,
+            context: aiContext,
+            numTestCases: type === 'CODING' ? Number(aiNumTestCases) : 0
         })
       });
       if(res.ok) {
@@ -398,22 +424,50 @@ export default function AdminDashboard() {
     setView('editor');
   };
 
-  const addCodingProblem = () => {
-    setQuestions([...questions, {
-      type: 'CODING',
-      title: '',
-      description: '',
-      inputFormat: '',
-      outputFormat: '',
-      constraints: '',
-      points: 50,
-      testCases: []
-    }]);
+  const addQuestion = () => {
+    if (type === 'QUIZ') {
+      setQuestions([...questions, {
+        questionType: 'MCQ',
+        title: '',
+        description: '',
+        options: ['', '', '', ''],
+        correctAnswer: '',
+        points: 10
+      }]);
+    } else {
+      setQuestions([...questions, {
+        type: 'CODING',
+        title: '',
+        description: '',
+        inputFormat: '',
+        outputFormat: '',
+        constraints: '',
+        points: 50,
+        testCases: []
+      }]);
+    }
   };
 
   const updateQuestion = (index, field, value) => {
     const updated = [...questions];
     updated[index][field] = value;
+    setQuestions(updated);
+  };
+
+  const addOption = (questionIndex) => {
+    const updated = [...questions];
+    if (!updated[questionIndex].options) updated[questionIndex].options = [];
+    updated[questionIndex].options.push('');
+    setQuestions(updated);
+  };
+
+  const removeOption = (questionIndex, optionIndex) => {
+    const updated = [...questions];
+    updated[questionIndex].options.splice(optionIndex, 1);
+    // if the removed option was the correct answer, clear the correct answer
+    if (updated[questionIndex].correctAnswer && !updated[questionIndex].options.includes(updated[questionIndex].correctAnswer)) {
+      updated[questionIndex].correctAnswer = '';
+    }
     setQuestions(updated);
   };
 
@@ -695,6 +749,22 @@ export default function AdminDashboard() {
                           <option>Medium</option>
                           <option>Hard</option>
                         </select>
+                      </div>
+                    </div>
+                    {type === 'CODING' && (
+                      <div>
+                        <label className="block text-sm font-bold text-[#2C3E50] mb-1">Number of Test Cases (Min: 5)</label>
+                        <input type="number" min="5" value={aiNumTestCases} onChange={e => setAiNumTestCases(Math.max(5, e.target.value))} className="w-full p-3 rounded-xl border border-slate-200 outline-none focus:border-[#007ACC]" />
+                      </div>
+                    )}
+                    <div>
+                      <label className="block text-sm font-bold text-[#2C3E50] mb-1">Context (Optional PDF)</label>
+                      <div className="relative">
+                        <input type="file" accept=".pdf" onChange={handlePdfUpload} className="hidden" id="ai-pdf-upload-admin" />
+                        <label htmlFor="ai-pdf-upload-admin" className="w-full p-3 rounded-xl border border-slate-200 border-dashed cursor-pointer flex items-center justify-between text-sm hover:border-[#007ACC] transition-colors">
+                           <span className="text-[#2C3E50]/70 truncate">{aiContext ? 'PDF Parsed Successfully!' : 'Click to select PDF document'}</span>
+                           <UploadCloud size={18} className="text-[#007ACC]" />
+                        </label>
                       </div>
                     </div>
                   </div>
@@ -1050,7 +1120,7 @@ export default function AdminDashboard() {
 
         <div className="flex flex-col sm:flex-row items-center gap-4">
           <div className="flex items-center bg-[#FFFFFF] p-1.5 rounded-xl border-2 border-[#4CAF50] shadow-sm overflow-x-auto">
-            {['details', 'challenges'].map(tab => (
+            {['details', type === 'QUIZ' ? 'questions' : 'challenges'].map(tab => (
               <button
                 key={tab}
                 onClick={() => setActiveTab(tab)}
@@ -1062,7 +1132,7 @@ export default function AdminDashboard() {
           </div>
 
           <AnimatePresence>
-            {activeTab === 'challenges' && (
+            {activeTab === (type === 'QUIZ' ? 'questions' : 'challenges') && (
               <div className="flex gap-2">
                 <motion.button 
                   initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.9 }}
@@ -1081,7 +1151,7 @@ export default function AdminDashboard() {
                 </motion.button>
                 <motion.button 
                   initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.9 }}
-                  onClick={addCodingProblem} 
+                  onClick={addQuestion} 
                   className="bg-[#007ACC] text-white px-5 py-2.5 rounded-xl flex items-center gap-2 hover:bg-[#F0A500] transition-colors font-black uppercase tracking-widest text-xs shadow-lg shadow-[#007ACC]/30"
                 >
                   <PlusCircle size={18} /> Add
@@ -1127,10 +1197,10 @@ export default function AdminDashboard() {
           </motion.div>
         )}
 
-        {activeTab === 'challenges' && (
+        {activeTab === (type === 'QUIZ' ? 'questions' : 'challenges') && (
           <motion.div key="challenges" initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }} className="space-y-6 pb-20">
-            <button onClick={addCodingProblem} className="w-full bg-[#FFFFFF] border-2 border-dashed border-[#007ACC] py-4 rounded-2xl flex items-center justify-center gap-2 hover:bg-[#F4F4F4] text-[#007ACC] transition-all font-black uppercase tracking-widest text-xs md:hidden mb-6">
-               <PlusCircle size={18} /> Add New Challenge
+            <button onClick={addQuestion} className="w-full bg-[#FFFFFF] border-2 border-dashed border-[#007ACC] py-4 rounded-2xl flex items-center justify-center gap-2 hover:bg-[#F4F4F4] text-[#007ACC] transition-all font-black uppercase tracking-widest text-xs md:hidden mb-6">
+               <PlusCircle size={18} /> Add New {type === 'QUIZ' ? 'Question' : 'Challenge'}
             </button>
 
             {questions.map((q, index) => (
@@ -1142,12 +1212,12 @@ export default function AdminDashboard() {
                 <div className="mb-6 flex flex-col lg:flex-row gap-6 pr-10">
                   <div className="flex-1 space-y-5">
                     <div>
-                      <label className="block text-xs text-slate-500 uppercase mb-2 font-bold tracking-wider">{type === 'QUIZ' ? 'Question Name *' : 'Challenge Name *'}</label>
-                      <input type="text" placeholder="Title" value={q.title} onChange={(e) => updateQuestion(index, 'title', e.target.value)} className="premium-input w-full p-3.5 rounded-xl font-bold placeholder-slate-400" />
+                      <label className="block text-xs text-slate-500 uppercase mb-2 font-bold tracking-wider">{type === 'QUIZ' ? 'Question Title *' : 'Challenge Name *'}</label>
+                      <input type="text" placeholder={type === 'QUIZ' ? 'Enter your question...' : 'Title'} value={q.title} onChange={(e) => updateQuestion(index, 'title', e.target.value)} className="premium-input w-full p-3.5 rounded-xl font-bold placeholder-slate-400" />
                     </div>
                     <div>
-                      <label className="block text-xs text-slate-500 uppercase mb-2 font-bold tracking-wider">Problem Statement *</label>
-                      <textarea placeholder="Markdown description..." value={q.description} onChange={(e) => updateQuestion(index, 'description', e.target.value)} className="premium-input w-full p-4 rounded-xl h-32 text-sm font-mono placeholder-slate-400" />
+                      <label className="block text-xs text-slate-500 uppercase mb-2 font-bold tracking-wider">Description *</label>
+                      <textarea placeholder={type === 'QUIZ' ? 'Question description...' : 'Problem statement...'} value={q.description} onChange={(e) => updateQuestion(index, 'description', e.target.value)} className="premium-input w-full p-4 rounded-xl h-32 text-sm font-mono placeholder-slate-400" />
                     </div>
                   </div>
                   <div className="flex flex-col gap-3 w-48">
@@ -1156,60 +1226,111 @@ export default function AdminDashboard() {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-                  <div>
-                    <label className="block text-xs text-slate-500 uppercase mb-2 font-bold tracking-wider">Input Format *</label>
-                    <textarea placeholder="Describe input shape..." value={q.inputFormat} onChange={(e) => updateQuestion(index, 'inputFormat', e.target.value)} className="premium-input w-full p-4 rounded-xl h-24 text-sm" />
-                  </div>
-                  <div>
-                    <label className="block text-xs text-slate-500 uppercase mb-2 font-bold tracking-wider">Output Format *</label>
-                    <textarea placeholder="Describe output shape..." value={q.outputFormat} onChange={(e) => updateQuestion(index, 'outputFormat', e.target.value)} className="premium-input w-full p-4 rounded-xl h-24 text-sm" />
-                  </div>
-                </div>
-
-                <div className="mt-4">
-                  <label className="block text-xs text-slate-500 uppercase mb-2 font-bold tracking-wider">Constraints *</label>
-                  <input type="text" placeholder="e.g., 1 <= N <= 10^5" value={q.constraints} onChange={e => updateQuestion(index, 'constraints', e.target.value)} className="premium-input w-full p-4 rounded-xl text-sm font-medium" />
-                </div>
-
-                {/* Integrated Test Cases */}
-                <div className="mt-8 border-t border-slate-200 pt-6">
-                  <div className="flex justify-between items-center mb-5">
-                    <h3 className="text-sm font-bold text-brand-700 flex items-center gap-2 uppercase tracking-widest">
-                      <Settings size={18} /> Test Case Manager ({q.testCases.length})
-                    </h3>
-                    <button onClick={() => addTestCase(index)} className="text-xs bg-brand-50 text-brand-700 px-4 py-2 rounded-lg border border-brand-200 hover:bg-brand-100 transition-all flex items-center gap-1 font-bold">
-                      <PlusCircle size={16} /> Add Test Case
-                    </button>
-                  </div>
-
+                {type === 'QUIZ' ? (
+                  // MCQ Question Fields
                   <div className="space-y-4">
-                    {q.testCases.map((tc, tcIdx) => (
-                      <div key={tcIdx} className="bg-slate-50 p-5 rounded-2xl flex flex-col md:flex-row gap-5 relative group border border-slate-200 shadow-sm">
-                        <button onClick={() => removeTestCase(index, tcIdx)} className="absolute -top-3 -right-3 bg-white text-red-500 p-2 rounded-full border border-slate-200 opacity-0 group-hover:opacity-100 transition-opacity shadow-sm z-10 hover:bg-red-50">
-                          <Trash2 size={16} />
-                        </button>
-                        <div className="flex-1">
-                          <label className="block text-xs text-slate-500 font-bold mb-1">Stdin Input</label>
-                          <textarea placeholder="e.g. 5" value={tc.input} onChange={e => updateTestCase(index, tcIdx, 'input', e.target.value)} className="premium-input w-full p-3 h-24 text-sm font-mono rounded-xl bg-white" />
-                          <label className="flex items-center gap-2 mt-3 text-sm font-bold text-slate-600 cursor-pointer">
-                            <input type="checkbox" checked={tc.isSample} onChange={e => updateTestCase(index, tcIdx, 'isSample', e.target.checked)} className="accent-brand-600 w-4 h-4" />
-                            Show as Sample (Visible to students)
-                          </label>
-                        </div>
-                        <div className="flex-1">
-                          <label className="block text-xs text-slate-500 font-bold mb-1">Expected Stdout</label>
-                          <textarea placeholder="e.g. 25" value={tc.expectedOutput} onChange={e => updateTestCase(index, tcIdx, 'expectedOutput', e.target.value)} className="premium-input w-full p-3 h-24 text-sm font-mono rounded-xl bg-white" />
-                        </div>
+                    <div>
+                      <label className="block text-xs text-slate-500 uppercase mb-2 font-bold tracking-wider">Options *</label>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        {q.options?.map((option, optIndex) => (
+                          <div key={optIndex} className="flex items-center gap-3">
+                            <span className="w-8 h-8 rounded-lg bg-brand-100 text-brand-700 flex items-center justify-center font-bold text-sm">{String.fromCharCode(65 + optIndex)}</span>
+                            <input
+                              type="text"
+                              placeholder={`Option ${String.fromCharCode(65 + optIndex)}`}
+                              value={option}
+                              onChange={(e) => {
+                                const updated = [...questions];
+                                updated[index].options[optIndex] = e.target.value;
+                                setQuestions(updated);
+                              }}
+                              className="premium-input flex-1 p-3 rounded-xl"
+                            />
+                            {q.options.length > 2 && (
+                              <button onClick={() => removeOption(index, optIndex)} className="text-red-500 hover:text-red-700 p-2">
+                                <Trash2 size={16} />
+                              </button>
+                            )}
+                          </div>
+                        ))}
                       </div>
-                    ))}
-                    {q.testCases.length === 0 && (
-                      <div className="text-center py-6 border-2 border-dashed border-red-200 bg-red-50/50 rounded-2xl">
-                        <p className="text-sm text-red-600 font-bold">No test cases added. At least one is mandatory to publish.</p>
-                      </div>
-                    )}
+                      <button onClick={() => addOption(index)} className="mt-3 text-brand-600 hover:text-brand-800 text-sm font-bold flex items-center gap-1">
+                        <PlusCircle size={16} /> Add Option
+                      </button>
+                    </div>
+                    <div>
+                      <label className="block text-xs text-slate-500 uppercase mb-2 font-bold tracking-wider">Correct Answer *</label>
+                      <select
+                        value={q.correctAnswer || ''}
+                        onChange={(e) => updateQuestion(index, 'correctAnswer', e.target.value)}
+                        className="premium-input w-full p-3 rounded-xl"
+                      >
+                        <option value="">Select correct answer</option>
+                        {q.options?.map((option, optIndex) => (
+                          <option key={optIndex} value={option}>{String.fromCharCode(65 + optIndex)}) {option}</option>
+                        ))}
+                      </select>
+                    </div>
                   </div>
-                </div>
+                ) : (
+                  // Coding Problem Fields
+                  <>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                      <div>
+                        <label className="block text-xs text-slate-500 uppercase mb-2 font-bold tracking-wider">Input Format *</label>
+                        <textarea placeholder="Describe input shape..." value={q.inputFormat} onChange={(e) => updateQuestion(index, 'inputFormat', e.target.value)} className="premium-input w-full p-4 rounded-xl h-24 text-sm" />
+                      </div>
+                      <div>
+                        <label className="block text-xs text-slate-500 uppercase mb-2 font-bold tracking-wider">Output Format *</label>
+                        <textarea placeholder="Describe output shape..." value={q.outputFormat} onChange={(e) => updateQuestion(index, 'outputFormat', e.target.value)} className="premium-input w-full p-4 rounded-xl h-24 text-sm" />
+                      </div>
+                    </div>
+
+                    <div className="mt-4">
+                      <label className="block text-xs text-slate-500 uppercase mb-2 font-bold tracking-wider">Constraints *</label>
+                      <input type="text" placeholder="e.g., 1 <= N <= 10^5" value={q.constraints} onChange={e => updateQuestion(index, 'constraints', e.target.value)} className="premium-input w-full p-4 rounded-xl text-sm font-medium" />
+                    </div>
+
+                    {/* Integrated Test Cases */}
+                    <div className="mt-8 border-t border-slate-200 pt-6">
+                      <div className="flex justify-between items-center mb-5">
+                        <h3 className="text-sm font-bold text-brand-700 flex items-center gap-2 uppercase tracking-widest">
+                          <Settings size={18} /> Test Case Manager ({q.testCases?.length || 0})
+                        </h3>
+                        <button onClick={() => addTestCase(index)} className="text-xs bg-brand-50 text-brand-700 px-4 py-2 rounded-lg border border-brand-200 hover:bg-brand-100 transition-all flex items-center gap-1 font-bold">
+                          <PlusCircle size={16} /> Add Test Case
+                        </button>
+                      </div>
+
+                      <div className="space-y-4">
+                        {q.testCases?.map((tc, tcIdx) => (
+                          <div key={tcIdx} className="bg-slate-50 p-5 rounded-2xl flex flex-col md:flex-row gap-5 relative group border border-slate-200 shadow-sm">
+                            <button onClick={() => removeTestCase(index, tcIdx)} className="absolute -top-3 -right-3 bg-white text-red-500 p-2 rounded-full border border-slate-200 opacity-0 group-hover:opacity-100 transition-opacity shadow-sm z-10 hover:bg-red-50">
+                              <Trash2 size={16} />
+                            </button>
+                            <div className="flex-1">
+                              <label className="block text-xs text-slate-500 font-bold mb-1">Stdin Input</label>
+                              <textarea placeholder="e.g. 5" value={tc.input} onChange={e => updateTestCase(index, tcIdx, 'input', e.target.value)} className="premium-input w-full p-3 h-24 text-sm font-mono rounded-xl bg-white" />
+                              <label className="flex items-center gap-2 mt-3 text-sm font-bold text-slate-600 cursor-pointer">
+                                <input type="checkbox" checked={tc.isSample} onChange={e => updateTestCase(index, tcIdx, 'isSample', e.target.checked)} className="accent-brand-600 w-4 h-4" />
+                                Show as Sample (Visible to students)
+                              </label>
+                            </div>
+                            <div className="flex-1">
+                              <label className="block text-xs text-slate-500 font-bold mb-1">Expected Stdout</label>
+                              <textarea placeholder="e.g. 25" value={tc.expectedOutput} onChange={e => updateTestCase(index, tcIdx, 'expectedOutput', e.target.value)} className="premium-input w-full p-3 h-24 text-sm font-mono rounded-xl bg-white" />
+                            </div>
+                          </div>
+                        ))}
+                        {(!q.testCases || q.testCases.length === 0) && (
+                          <div className="text-center py-6 border-2 border-dashed border-red-200 bg-red-50/50 rounded-2xl">
+                            <p className="text-sm text-red-600 font-bold">No test cases added. At least one is mandatory to publish.</p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </>
+                )}
               </div>
             ))}
           </motion.div>
