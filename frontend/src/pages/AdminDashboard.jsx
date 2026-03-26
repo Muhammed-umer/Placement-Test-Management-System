@@ -181,7 +181,7 @@ export default function AdminDashboard() {
   const [view, setView] = useState('home');
   const [sidebarView, setSidebarView] = useState('overview'); // overview, contests, quizzes, history, students
   const [activeTab, setActiveTab] = useState('details');
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [userRole, setUserRole] = useState(sessionStorage.getItem('role') || '');
   const [selectedStudent, setSelectedStudent] = useState(null);
   const [adminEmailInput, setAdminEmailInput] = useState('');
@@ -790,57 +790,107 @@ export default function AdminDashboard() {
 
   return (
     <div className="flex h-screen bg-slate-50 text-slate-900 font-sans overflow-hidden">
-      {/* Mobile menu button */}
-      <button 
-        onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-        className="md:hidden fixed top-4 right-4 z-50 p-2 glass-panel shadow-sm text-indigo-600"
-      >
-        {isSidebarOpen ? <X size={24} strokeWidth={1.5} /> : <Menu size={24} strokeWidth={1.5} />}
-      </button>
+      {/* Mobile overlay backdrop */}
+      {isSidebarOpen && (
+        <div
+          className="md:hidden fixed inset-0 z-30 bg-slate-900/30 backdrop-blur-sm"
+          onClick={() => setIsSidebarOpen(false)}
+        />
+      )}
 
       {/* Slim Collapsible Sidebar */}
-      <motion.aside 
+      <motion.aside
         initial={false}
-        animate={{ width: isSidebarOpen ? 280 : 80 }}
-        className={`fixed inset-y-0 left-0 z-40 glass-panel border-r border-slate-200 transform md:translate-x-0 md:static flex flex-col transition-transform duration-300 shrink-0 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}`}
+        animate={{ width: isSidebarOpen ? 280 : 72 }}
+        transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
+        className="fixed inset-y-0 left-0 z-40 md:static flex flex-col shrink-0 overflow-hidden"
+        style={{
+          background: 'rgba(255,255,255,0.92)',
+          backdropFilter: 'blur(16px)',
+          WebkitBackdropFilter: 'blur(16px)',
+          borderRight: '1px solid #e2e8f0',
+          boxShadow: '2px 0 16px 0 rgba(99,102,241,0.07), 1px 0 0 0 #e2e8f0'
+        }}
       >
-        <div className="flex justify-center items-center gap-2 py-6 border-b border-slate-100 mx-2">
-           <div className={`w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center shadow-md shadow-indigo-500/20 shrink-0`}>
-             <ShieldAlert className="text-white" size={24} strokeWidth={1.5} />
-           </div>
-           {isSidebarOpen && <span className="font-extrabold text-xl tracking-tight text-slate-800 whitespace-nowrap">AdminPanel</span>}
+        {/* ── Sidebar Header (logo + toggle) ── */}
+        <div className="flex items-center justify-between px-3 py-4 border-b border-slate-100 shrink-0">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-9 h-9 bg-gradient-to-br from-indigo-500 to-indigo-700 rounded-xl flex items-center justify-center shadow-md shadow-indigo-500/25 shrink-0">
+              <ShieldAlert className="text-white" size={20} strokeWidth={1.5} />
+            </div>
+            <motion.span
+              animate={{ opacity: isSidebarOpen ? 1 : 0, width: isSidebarOpen ? 'auto' : 0 }}
+              transition={{ duration: 0.2, ease: [0.4, 0, 0.2, 1] }}
+              className="font-extrabold text-lg tracking-tight text-slate-800 whitespace-nowrap overflow-hidden"
+            >
+              AdminPanel
+            </motion.span>
+          </div>
+          <button
+            onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+            className="shrink-0 w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 hover:bg-indigo-50 hover:text-indigo-600 transition-colors"
+            title={isSidebarOpen ? 'Collapse sidebar' : 'Expand sidebar'}
+          >
+            <Menu size={18} strokeWidth={1.5} />
+          </button>
         </div>
 
-        <nav className="flex-1 px-3 py-6 space-y-2 overflow-y-auto overflow-x-hidden">
-          <button onClick={() => {setSidebarView('overview'); setIsSidebarOpen(false);}} className={`w-full flex items-center gap-3 px-3 py-3 rounded-lg font-medium transition-all ${sidebarView === 'overview' ? 'bg-indigo-50 text-indigo-700' : 'text-slate-500 hover:bg-slate-50'} whitespace-nowrap`}>
-            <LayoutDashboard size={20} className="shrink-0" strokeWidth={1.5} /> {isSidebarOpen && <span>Overview</span>}
-          </button>
-          <button onClick={() => {setSidebarView('contests'); setIsSidebarOpen(false);}} className={`w-full flex items-center gap-3 px-3 py-3 rounded-lg font-medium transition-all ${sidebarView === 'contests' ? 'bg-indigo-50 text-indigo-700' : 'text-slate-500 hover:bg-slate-50'} whitespace-nowrap`}>
-            <Code size={20} className="shrink-0" strokeWidth={1.5} /> {isSidebarOpen && <span>Coding Contests</span>}
-          </button>
-          <button onClick={() => {setSidebarView('quizzes'); setIsSidebarOpen(false);}} className={`w-full flex items-center gap-3 px-3 py-3 rounded-lg font-medium transition-all ${sidebarView === 'quizzes' ? 'bg-indigo-50 text-indigo-700' : 'text-slate-500 hover:bg-slate-50'} whitespace-nowrap`}>
-            <ListChecks size={20} className="shrink-0" strokeWidth={1.5} /> {isSidebarOpen && <span>Quizzes</span>}
-          </button>
-          <button onClick={() => {setSidebarView('history'); setIsSidebarOpen(false);}} className={`w-full flex items-center gap-3 px-3 py-3 rounded-lg font-medium transition-all ${sidebarView === 'history' ? 'bg-indigo-50 text-indigo-700' : 'text-slate-500 hover:bg-slate-50'} whitespace-nowrap`}>
-            <History size={20} className="shrink-0" strokeWidth={1.5} /> {isSidebarOpen && <span>History</span>}
-          </button>
-          <button onClick={() => {setSidebarView('analytics'); setIsSidebarOpen(false); fetchStudents();}} className={`w-full flex items-center gap-3 px-3 py-3 rounded-lg font-medium transition-all ${sidebarView === 'analytics' ? 'bg-indigo-50 text-indigo-700' : 'text-slate-500 hover:bg-slate-50'} whitespace-nowrap`}>
-            <BarChart3 size={20} className="shrink-0" strokeWidth={1.5} /> {isSidebarOpen && <span>Analytics</span>}
-          </button>
-          <button onClick={() => {setSidebarView('students'); setIsSidebarOpen(false);}} className={`w-full flex items-center gap-3 px-3 py-3 rounded-lg font-medium transition-all ${sidebarView === 'students' ? 'bg-indigo-50 text-indigo-700' : 'text-slate-500 hover:bg-slate-50'} whitespace-nowrap`}>
-            <Users size={20} className="shrink-0" strokeWidth={1.5} /> {isSidebarOpen && <span>Onboard Students</span>}
-          </button>
-          {userRole === 'ROLE_SUPER_ADMIN' && (
-            <button onClick={() => {setSidebarView('admins'); setIsSidebarOpen(false);}} className={`w-full flex items-center gap-3 px-3 py-3 rounded-lg font-medium transition-all ${sidebarView === 'admins' ? 'bg-indigo-50 text-indigo-700' : 'text-slate-500 hover:bg-slate-50'} whitespace-nowrap`}>
-              <ShieldAlert size={20} className="shrink-0" strokeWidth={1.5} /> {isSidebarOpen && <span>Manage Admins</span>}
-            </button>
-          )}
+        {/* ── Navigation ── */}
+        <nav className="flex-1 px-2 py-4 space-y-1 overflow-y-auto overflow-x-hidden">
+          {[
+            { view: 'overview',  Icon: LayoutDashboard, label: 'Overview' },
+            { view: 'contests',  Icon: Code,            label: 'Coding Contests' },
+            { view: 'quizzes',  Icon: ListChecks,       label: 'Quizzes' },
+            { view: 'history',  Icon: History,          label: 'History' },
+            { view: 'analytics',Icon: BarChart3,        label: 'Analytics',  onClick: () => fetchStudents() },
+            { view: 'students', Icon: Users,            label: 'Onboard Students' },
+            ...(userRole === 'ROLE_SUPER_ADMIN'
+              ? [{ view: 'admins', Icon: ShieldAlert, label: 'Manage Admins' }]
+              : [])
+          ].map(({ view, Icon, label, onClick }) => {
+            const isActive = sidebarView === view;
+            return (
+              <button
+                key={view}
+                onClick={() => { setSidebarView(view); setIsSidebarOpen(false); onClick?.(); }}
+                title={!isSidebarOpen ? label : undefined}
+                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl font-medium transition-all duration-150 ${
+                  isActive
+                    ? 'bg-indigo-600 text-white shadow-sm shadow-indigo-500/30'
+                    : 'text-slate-500 hover:bg-slate-100 hover:text-slate-800'
+                } ${!isSidebarOpen ? 'justify-center' : ''}`}
+              >
+                <Icon size={20} className="shrink-0" strokeWidth={1.5} />
+                <motion.span
+                  animate={{ opacity: isSidebarOpen ? 1 : 0, width: isSidebarOpen ? 'auto' : 0 }}
+                  transition={{ duration: 0.18, ease: [0.4, 0, 0.2, 1] }}
+                  className="whitespace-nowrap overflow-hidden text-sm"
+                >
+                  {label}
+                </motion.span>
+              </button>
+            );
+          })}
         </nav>
 
-        <div className="p-4 border-t border-slate-100">
-           <button onClick={() => navigate('/login')} className="w-full flex items-center justify-center gap-3 px-3 py-3 rounded-lg font-medium text-rose-500 hover:bg-rose-50 transition-colors">
-             <X size={20} className="shrink-0" strokeWidth={1.5} /> {isSidebarOpen && <span>Sign Out</span>}
-           </button>
+        {/* ── Sign Out ── */}
+        <div className="px-2 py-3 border-t border-slate-100 shrink-0">
+          <button
+            onClick={() => navigate('/login')}
+            title={!isSidebarOpen ? 'Sign Out' : undefined}
+            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl font-medium text-rose-500 hover:bg-rose-50 transition-colors duration-150 ${
+              !isSidebarOpen ? 'justify-center' : ''
+            }`}
+          >
+            <X size={20} className="shrink-0" strokeWidth={1.5} />
+            <motion.span
+              animate={{ opacity: isSidebarOpen ? 1 : 0, width: isSidebarOpen ? 'auto' : 0 }}
+              transition={{ duration: 0.18, ease: [0.4, 0, 0.2, 1] }}
+              className="whitespace-nowrap overflow-hidden text-sm"
+            >
+              Sign Out
+            </motion.span>
+          </button>
         </div>
       </motion.aside>
 
@@ -856,7 +906,8 @@ export default function AdminDashboard() {
             <button onClick={() => window.location.reload()} className="p-2 rounded-lg text-slate-400 hover:bg-slate-100 transition-colors">
               <RefreshCw size={18} strokeWidth={1.5} />
             </button>
-            <button onClick={() => setIsSidebarOpen(!isSidebarOpen)} className="hidden md:block p-2 rounded-lg text-slate-400 hover:bg-slate-100 transition-colors">
+            {/* Mobile hamburger in header */}
+            <button onClick={() => setIsSidebarOpen(!isSidebarOpen)} className="md:hidden p-2 rounded-lg text-slate-400 hover:bg-slate-100 transition-colors">
               <Menu size={18} strokeWidth={1.5} />
             </button>
             <h1 className="text-xl font-bold tracking-tight text-slate-800 ml-2 capitalize">
