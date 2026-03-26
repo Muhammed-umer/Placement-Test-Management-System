@@ -21,6 +21,7 @@ export default function CreateQuiz() {
   const [noEndTime, setNoEndTime] = useState(false);
   const [contestUrl, setContestUrl] = useState('');
   const [maxAttempts, setMaxAttempts] = useState(1);
+  const [durationMinutes, setDurationMinutes] = useState(60);
 
   const [questions, setQuestions] = useState([]);
 
@@ -203,18 +204,14 @@ export default function CreateQuiz() {
 
     setIsPublishing(true);
     const totalPoints = questions.reduce((sum, q) => sum + Number(q.points), 0);
-    let durationMinutes = 60;
-    if (startTime && endTime && !noEndTime) {
-      const mDiff = (new Date(endTime) - new Date(startTime)) / 60000;
-      durationMinutes = Math.abs(mDiff);
-    }
+    // durationMinutes is now explicitly set by the user using the new input fields
 
     const payload = {
       title: contestName,
       description: `Quiz ID: ${contestUrl}`,
       type: 'QUIZ',
       totalPoints: totalPoints || 0,
-      durationMinutes: durationMinutes || 60,
+      durationMinutes: Number(durationMinutes) || 60,
       maxAttempts: Number(maxAttempts) || 1,
       startTime: startTime ? (startTime.length === 16 ? startTime + ':00' : startTime) : null,
       endTime: (endTime && !noEndTime) ? (endTime.length === 16 ? endTime + ':00' : endTime) : null,
@@ -422,10 +419,14 @@ export default function CreateQuiz() {
                       <input type="text" value={contestName} onChange={(e) => setContestName(e.target.value)} placeholder="e.g., Midterm Evaluation" className="premium-input w-full p-4 rounded-xl text-lg font-semibold" />
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
                       <div>
                         <label className="block text-sm font-medium text-[#2C3E50] mb-2 font-bold tracking-wider">Max Valid Attempts</label>
                         <input type="number" min="1" value={maxAttempts} onChange={(e) => setMaxAttempts(Math.max(1, e.target.value))} className="premium-input w-full p-4 rounded-xl text-lg" />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-[#2C3E50] mb-2 font-bold tracking-wider">Total Time (Mins)</label>
+                        <input type="number" min="1" value={durationMinutes} onChange={(e) => setDurationMinutes(Math.max(1, e.target.value))} className="premium-input w-full p-4 rounded-xl text-lg" />
                       </div>
                       <div>
                         <label className="block text-sm font-medium text-[#2C3E50] mb-2 font-bold tracking-wider">Start Time (IST)</label>

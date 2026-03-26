@@ -23,5 +23,6 @@ public class LeaderboardEntry {
     private String studentName;
     private int totalPoints;
     private int attempts;
+    private int timeTakenMinutes;
     private LocalDateTime finishTime;
 }

@@ -1,20 +1,25 @@
 @import "tailwindcss";
 
 @theme {
-  --color-brand-50: #e6f2fa;
-  --color-brand-100: #cce4f5;
-  --color-brand-300: #66b5e6;
-  --color-brand-500: #007ACC;
-  --color-brand-600: #006bb3;
-  --color-brand-700: #005c99;
-  --color-brand-800: #004d80;
-  --color-brand-900: #003d66;
+  --color-brand-50: #eef2ff;
+  --color-brand-100: #e0e7ff;
+  --color-brand-200: #c7d2fe;
+  --color-brand-300: #a5b4fc;
+  --color-brand-400: #818cf8;
+  --color-brand-500: #6366f1; /* Indigo-500 */
+  --color-brand-600: #4f46e5;
+  --color-brand-700: #4338ca;
+  --color-brand-800: #3730a3;
+  --color-brand-900: #312e81;
 
-  --color-primary-500: #007ACC; 
-  --color-accent-500: #F0A500;
-  --color-success-500: #4CAF50;
-  --color-light-bg: #F4F4F4;
-  --color-dark-text: #2C3E50;
+  --color-primary-500: #4f46e5; /* Indigo-600 */
+  --color-accent-500: #3b82f6; /* Blue-500 */
+  --color-success-500: #10b981; /* Emerald-500 */
+  --color-danger-500: #f43f5e; /* Rose-500 */
+  --color-warning-500: #f59e0b; /* Amber-500 */
+
+  --color-light-bg: #f8fafc; /* Slate-50 */
+  --color-dark-text: #0f172a; /* Slate-900 */
   
   --font-sans: 'Inter', system-ui, sans-serif;
 }
@@ -33,17 +38,21 @@ input[type="password"]::-webkit-credentials-auto-fill-button {
   right: 0;
 }
 
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+
 body {
   margin: 0;
   padding: 0;
   box-sizing: border-box;
   font-family: 'Inter', system-ui, sans-serif;
-  background-color: #F4F4F4;
-  color: #2C3E50;
+  background-color: #f8fafc;
+  color: #0f172a;
   background-image: none;
   overflow-x: hidden;
   max-width: 100vw;
   overscroll-behavior-y: none;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 /* Shake Animation */
@@ -60,100 +69,115 @@ body {
 
 /* Disable User Selection */
 .no-select {
-  -webkit-user-select: none; /* Safari */
-  -ms-user-select: none; /* IE 10 and IE 11 */
-  user-select: none; /* Standard syntax */
+  -webkit-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
 }
 
-/* Base tailwind elements overriden for clean light feel */
+/* Premium Layout Components */
 .glass-panel {
-  background: #ffffff;
-  border: 1px solid #e2e8f0;
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(12px);
+  border: 1px solid #e2e8f0; /* Slate-200 */
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.1);
   border-radius: 12px;
+}
+
+/* Modern Floating Label Inputs */
+.premium-input-container {
+  position: relative;
+  width: 100%;
 }
 
 .premium-input {
   background: #ffffff;
-  border: 1px solid #cbd5e1;
-  color: #2C3E50;
-  transition: all 0.2s ease;
+  border: 1px solid #cbd5e1; /* Slate-300 */
+  color: #0f172a; /* Slate-900 */
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  border-radius: 8px;
+  width: 100%;
 }
 
 .premium-input:focus {
   outline: none;
-  border-color: #007ACC;
-  box-shadow: 0 0 0 3px rgba(0, 122, 204, 0.15);
-  background: #fff;
+  border-color: #6366f1; /* Indigo-500 */
+  box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.2); /* ring-indigo-500/20 */
+  background: #ffffff;
+}
+
+.premium-input::placeholder {
+  color: #94a3b8; /* Slate-400 */
+  font-weight: 400;
 }
 
 .btn-primary {
-  background: #007ACC;
+  background: #4f46e5; /* Indigo-600 */
   color: white;
   border: none;
-  transition: all 0.3s ease;
-  box-shadow: 0 4px 10px rgba(0, 122, 204, 0.3);
+  transition: all 0.2s ease;
+  box-shadow: 0 4px 6px -1px rgba(79, 70, 229, 0.3), 0 2px 4px -2px rgba(79, 70, 229, 0.3);
 }
 
 .btn-primary:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 15px rgba(0, 122, 204, 0.4);
-  background: #006bb3;
+  transform: translateY(-1px);
+  box-shadow: 0 10px 15px -3px rgba(79, 70, 229, 0.4), 0 4px 6px -4px rgba(79, 70, 229, 0.4);
+  background: #4338ca; /* Indigo-700 */
 }
 
 .btn-danger {
-  background: #F0A500;
+  background: #f43f5e; /* Rose-500 */
   color: white;
   border: none;
-  transition: all 0.3s ease;
-  box-shadow: 0 4px 10px rgba(240, 165, 0, 0.3);
+  transition: all 0.2s ease;
+  box-shadow: 0 4px 6px -1px rgba(244, 63, 94, 0.3);
 }
 
 .btn-danger:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 15px rgba(240, 165, 0, 0.4);
-  background: #d99400;
+  transform: translateY(-1px);
+  box-shadow: 0 10px 15px -3px rgba(244, 63, 94, 0.4);
+  background: #e11d48; /* Rose-600 */
 }
 
 /* Palette status colors */
 .palette-unvisited {
-  background: #e2e8f0;
-  border-color: #cbd5e1;
-  color: #2C3E50;
+  background: #f1f5f9; /* Slate-100 */
+  border-color: #cbd5e1; /* Slate-300 */
+  color: #334155; /* Slate-700 */
 }
 
 .palette-skipped {
-  background: #F0A500;
-  border-color: #d99400;
+  background: #f59e0b; /* Amber-500 */
+  border-color: #d97706; /* Amber-600 */
   color: white;
 }
 
 .palette-attempted {
-  background: #4CAF50;
-  border-color: #3e8e41;
+  background: #10b981; /* Emerald-500 */
+  border-color: #059669; /* Emerald-600 */
   color: white;
 }
 
 /* Scrollbar */
 ::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  width: 6px;
+  height: 6px;
 }
 ::-webkit-scrollbar-track {
-  background: #f1f5f9; 
+  background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: #cbd5e1; 
+  background: #cbd5e1; /* Slate-300 */
   border-radius: 4px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #94a3b8; 
+  background: #94a3b8; /* Slate-400 */
 }
 
-/* Fix monaco editor taking over full height unexpectedly */
+/* Monaco fix */
 .monaco-editor-container {
   height: calc(100vh - 150px);
   border-radius: 8px;
   overflow: hidden;
-  border: 1px solid #e2e8f0;
+  border: 1px solid #e2e8f0; /* Slate-200 */
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
 }

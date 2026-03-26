@@ -46,6 +46,21 @@ public class AssessmentController {
                 .orElse(ResponseEntity.<Assessment>notFound().build());
     }
 
+    @PostMapping("/{id}/signup")
+    public ResponseEntity<?> signup(@PathVariable Long id) {
+        String studentEmail = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication().getName();
+        return assessmentRepository.findById(id).map(assessment -> {
+            if (assessment.getSignedUpUsers() == null) {
+                assessment.setSignedUpUsers(new java.util.ArrayList<>());
+            }
+            if (!assessment.getSignedUpUsers().contains(studentEmail)) {
+                assessment.getSignedUpUsers().add(studentEmail);
+                assessmentRepository.save(assessment);
+            }
+            return ResponseEntity.ok(java.util.Map.of("message", "Signed up successfully"));
+        }).orElse(ResponseEntity.notFound().build());
+    }
+
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteAssessment(@PathVariable Long id) {
         if (!assessmentRepository.existsById(id)) {

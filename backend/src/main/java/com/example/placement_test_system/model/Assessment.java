@@ -33,6 +33,9 @@ public class Assessment {
     @ElementCollection
     private List<String> allowedLanguages;
 
+    @ElementCollection
+    private List<String> signedUpUsers = new java.util.ArrayList<>();
+
     @OneToMany(cascade = CascadeType.ALL)
     private List<Question> questions;
 }

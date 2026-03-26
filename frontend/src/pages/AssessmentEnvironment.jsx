@@ -39,6 +39,7 @@ export default function AssessmentEnvironment() {
   const [leaderboard, setLeaderboard] = useState([]);
   const [showLeaderboard, setShowLeaderboard] = useState(false);
   const [attemptLimitExceeded, setAttemptLimitExceeded] = useState(false);
+  const [sessionStartTime, setSessionStartTime] = useState(null);
   
   // Custom Modal State  
   const [modalConfig, setModalConfig] = useState(null); // { title, message, type: 'info' | 'confirm' | 'warning', onConfirm, onCancel, confirmText, cancelText }
@@ -281,8 +282,23 @@ export default function AssessmentEnvironment() {
     if (navigator.clipboard && navigator.clipboard.writeText) {
       navigator.clipboard.writeText('Security: Clipboard Cleared').catch(() => {});
     }
+    
+    if (!sessionStorage.getItem(`assessment_${id}_start`)) {
+        sessionStorage.setItem(`assessment_${id}_start`, new Date().getTime());
+    }
+    setSessionStartTime(parseInt(sessionStorage.getItem(`assessment_${id}_start`)));
+    
     enterFullscreen();
   };
+
+  useEffect(() => {
+     if (hasStarted) {
+         if (!sessionStorage.getItem(`assessment_${id}_start`)) {
+            sessionStorage.setItem(`assessment_${id}_start`, new Date().getTime());
+         }
+         setSessionStartTime(parseInt(sessionStorage.getItem(`assessment_${id}_start`)));
+     }
+  }, [hasStarted, id]);
 
   // Auto Save Feature
   useEffect(() => {
@@ -397,7 +413,8 @@ export default function AssessmentEnvironment() {
                  assessmentId: assessment.id,
                  answers: quizAnswers,
                  code: code,
-                 languageId: language?.id || 54
+                 languageId: language?.id || 54,
+                 timeTakenMinutes: sessionStartTime ? Math.ceil((new Date().getTime() - sessionStartTime) / 60000) : 0
                })
             });
             const resultData = await res.json();
@@ -462,20 +479,46 @@ export default function AssessmentEnvironment() {
   const generatedTestCases = currentQ?.testCases?.filter(tc => !tc.isSample) || [];
   const orderedTestCases = [...sampleTestCases, ...generatedTestCases];
 
-  // Auto-submit when time runs out
+  // Timer logic
+  let remainingTimeStr = "--:--:--";
+  if (sessionStartTime && assessment && assessment.durationMinutes) {
+      const elapsedMs = now.getTime() - sessionStartTime;
+      const totalMs = assessment.durationMinutes * 60000;
+      const remainingMs = Math.max(0, totalMs - elapsedMs);
+      
+      const hrs = Math.floor(remainingMs / 3600000).toString().padStart(2, '0');
+      const mins = Math.floor((remainingMs % 3600000) / 60000).toString().padStart(2, '0');
+      const secs = Math.floor((remainingMs % 60000) / 1000).toString().padStart(2, '0');
+      remainingTimeStr = `${hrs}:${mins}:${secs}`;
+      
+      // Auto submit when time limit from durationMinutes runs out
+      if (remainingMs === 0 && (!modalConfig || modalConfig.title !== 'Time is Up!')) {
+         setModalConfig({
+           title: 'Time is Up!',
+           message: 'The assessment time limit has been reached. Your work is being automatically submitted.',
+           type: 'warning',
+           confirmText: 'Acknowledge',
+           onConfirm: () => {
+             submitCode(true);
+           }
+         });
+      }
+  }
+
+  // Auto-submit when time runs out from global end time
   useEffect(() => {
     if (hasStarted && isAfterEnd && (!modalConfig || modalConfig.title !== 'Time is Up!')) {
       setModalConfig({
         title: 'Time is Up!',
-        message: 'The assessment time limit has been reached. Your work is being automatically submitted.',
+        message: 'The assessment absolute end time has been reached. Your work is being automatically submitted.',
         type: 'warning',
         confirmText: 'Acknowledge',
         onConfirm: () => {
-          submitCode(true); // Ensure submitCode has access if needed, though it's bound.
+          submitCode(true); 
         }
       });
     }
-  }, [isAfterEnd, hasStarted, modalConfig]); // removed submitCode as it changes constantly depending on render
+  }, [isAfterEnd, hasStarted, modalConfig]);
 
   if (!assessment) return <div className="bg-[#FFFFFF] min-h-screen text-[#2C3E50] pt-20 text-center font-sans font-bold uppercase tracking-widest text-sm">Loading Environment...</div>;
 
@@ -600,9 +643,14 @@ export default function AssessmentEnvironment() {
             <div className="w-full md:w-5/12 border-r-4 border-[#4CAF50] flex flex-col bg-[#F4F4F4]">
               <div className="h-16 border-b-4 border-[#4CAF50] flex items-center justify-between px-6 bg-[#FFFFFF]">
                 <span className="font-black text-[#007ACC] text-[10px] md:text-xs uppercase tracking-widest truncate">{assessment.title}</span>
-                <button onClick={() => setShowLeaderboard(!showLeaderboard)} className="text-xs font-black bg-[#F4F4F4] hover:bg-[#4CAF50] transition-colors text-[#2C3E50] px-4 py-2 border-2 border-[#4CAF50] rounded-xl flex items-center gap-1">
-                  <Trophy size={14} /> Ranking
-                </button>
+                <div className="flex items-center gap-4">
+                  <div className="text-red-500 font-bold text-sm bg-red-50 px-3 py-1 rounded-lg border border-red-200">
+                    {remainingTimeStr}
+                  </div>
+                  <button onClick={() => setShowLeaderboard(!showLeaderboard)} className="text-xs font-black bg-[#F4F4F4] hover:bg-[#4CAF50] transition-colors text-[#2C3E50] px-4 py-2 border-2 border-[#4CAF50] rounded-xl flex items-center gap-1">
+                    <Trophy size={14} /> Ranking
+                  </button>
+                </div>
               </div>
 
               <div className="flex overflow-x-auto border-b-4 border-[#4CAF50] bg-[#FFFFFF] scrollbar-hide py-3 px-4 shadow-sm z-10">
@@ -768,8 +816,13 @@ export default function AssessmentEnvironment() {
                   <h1 className="text-xl font-black text-[#2C3E50]">{assessment.title}</h1>
                   <p className="text-sm text-[#2C3E50]/60 font-bold">Question {currentQuestionIdx + 1} of {questions.length}</p>
                </div>
-               <div className="text-sm font-black bg-[#F4F4F4] text-[#2C3E50] px-5 py-2 border-2 border-[#4CAF50] rounded-xl flex items-center gap-2">
-                 <Trophy size={16} className="text-[#007ACC]" /> {currentQ?.points} Points
+               <div className="flex items-center gap-4">
+                 <div className="text-red-500 font-bold text-lg bg-red-50 px-4 py-2 rounded-xl border border-red-200 shadow-sm flex items-center gap-2">
+                    <ShieldAlert size={18} /> {remainingTimeStr}
+                 </div>
+                 <div className="text-sm font-black bg-[#F4F4F4] text-[#2C3E50] px-5 py-2 border-2 border-[#4CAF50] rounded-xl flex items-center gap-2">
+                   <Trophy size={16} className="text-[#007ACC]" /> {currentQ?.points} Points
+                 </div>
                </div>
              </div>
 

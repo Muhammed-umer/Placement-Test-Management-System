@@ -116,13 +116,13 @@ const StudentProfileModal = ({ student, onClose }) => {
                  </div>
                  <div className="bg-purple-50 p-4 rounded-xl border border-purple-100 text-center">
                     <div className="text-2xl font-black text-purple-700">{stats.contestCount}</div>
-                    <div className="text-xs font-bold text-purple-600 uppercase tracking-wider">Contests Attended</div>
-                 </div>
-                 <div className="bg-orange-50 p-4 rounded-xl border border-orange-100 text-center">
-                    <div className="text-2xl font-black text-orange-700">{stats.avgContestScore}</div>
-                    <div className="text-xs font-bold text-orange-600 uppercase tracking-wider">Avg Contest Score</div>
-                 </div>
-              </div>
+                     <div className="text-xs font-bold text-purple-600 uppercase tracking-wider">Contests Attended</div>
+                  </div>
+                  <div className="bg-orange-50 p-4 rounded-xl border border-orange-100 text-center">
+                     <div className="text-2xl font-black text-orange-700">{stats.avgContestScore}</div>
+                     <div className="text-xs font-bold text-orange-600 uppercase tracking-wider">Avg Contest Score</div>
+                  </div>
+               </div>
            ) : (
               <div className="text-red-400 font-bold mb-6">Stats unavailable</div>
            )}
@@ -194,6 +194,8 @@ export default function AdminDashboard() {
   const studentsPerPage = 10;
   
   const [submissionsList, setSubmissionsList] = useState([]);
+  const [registeredStudentsList, setRegisteredStudentsList] = useState([]);
+  const [submissionTab, setSubmissionTab] = useState('submissions'); // 'submissions' or 'registered'
   const [viewingAssessmentUrl, setViewingAssessmentUrl] = useState('');
   
   // Submission Filters State
@@ -219,6 +221,7 @@ export default function AdminDashboard() {
   const [noEndTime, setNoEndTime] = useState(false);
   const [type, setType] = useState('CODING');
   const [maxAttempts, setMaxAttempts] = useState(1);
+  const [durationMinutes, setDurationMinutes] = useState(120);
   const [contestUrl, setContestUrl] = useState('');
   const [questions, setQuestions] = useState([]);
 
@@ -425,6 +428,11 @@ export default function AdminDashboard() {
       if (res.ok) {
         setSubmissionsList(await res.json());
         setViewingAssessmentUrl(assessmentUrl || '');
+        
+        const assess = contests.find(c => c.id === assessmentId);
+        setRegisteredStudentsList(assess?.signedUpUsers || []);
+        setSubmissionTab('submissions');
+
         setSidebarView('submissions');
       }
     } catch (e) { console.error(e); }
@@ -531,6 +539,7 @@ export default function AdminDashboard() {
       setNoEndTime(!contest.endTime);
       setType(contest.type);
       setMaxAttempts(contest.maxAttempts || 1);
+      setDurationMinutes(contest.durationMinutes || 120);
       setContestUrl(contest.url || '');
       setQuestions(contest.questions || []);
     } else {
@@ -541,6 +550,7 @@ export default function AdminDashboard() {
       setNoEndTime(false);
       setType(isQuiz ? 'QUIZ' : 'CODING');
       setMaxAttempts(1);
+      setDurationMinutes(120);
       setQuestions([]);
     }
     setActiveTab('details');
@@ -649,7 +659,7 @@ export default function AdminDashboard() {
       description: `Contest ID: ${contestUrl}`,
       type: type,
       totalPoints: totalPoints || 0,
-      durationMinutes: 120, // default duration
+      durationMinutes: Number(durationMinutes) || 120, // default duration
       maxAttempts: Number(maxAttempts) || 1,
       startTime: startTime ? (startTime.length === 16 ? startTime + ':00' : startTime) : null,
       endTime: (endTime && !noEndTime) ? (endTime.length === 16 ? endTime + ':00' : endTime) : null,
@@ -691,45 +701,50 @@ export default function AdminDashboard() {
   const historyList = contests.filter(c => c.endTime && new Date(c.endTime) <= now);
 
   const renderAssessmentList = (list) => (
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 relative z-10">
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 relative z-10">
       <AnimatePresence>
         {list.map(c => (
           <motion.div 
             key={c.id} 
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            className="bg-[#FFFFFF] rounded-2xl border-2 border-[#4CAF50] p-6 flex flex-col justify-between hover:border-[#007ACC] hover:shadow-xl hover:shadow-[#007ACC]/20 transition-all cursor-pointer group"
+            className="glass-panel p-6 flex flex-col justify-between hover:border-indigo-500 hover:shadow-lg hover:shadow-indigo-500/10 transition-all cursor-pointer group bg-white"
             onClick={() => openEditor(c)}
           >
             <div className="mb-6">
-              <div className="w-16 h-16 bg-[#F4F4F4] border-2 border-[#4CAF50] rounded-xl flex items-center justify-center mb-6 text-[#007ACC] group-hover:bg-[#007ACC] group-hover:text-[#FFFFFF] transition-colors">
-                {c.type === 'QUIZ' ? <ListChecks size={32} /> : <Code size={32} />}
+              <div className="flex justify-between items-start mb-4">
+                <div className="w-12 h-12 bg-indigo-50 rounded-xl flex items-center justify-center text-indigo-600 group-hover:bg-indigo-600 group-hover:text-white transition-colors">
+                  {c.type === 'QUIZ' ? <ListChecks size={24} strokeWidth={1.5} /> : <Code size={24} strokeWidth={1.5} />}
+                </div>
+                <span className="text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-md border bg-emerald-50 border-emerald-100 text-emerald-600">
+                  Open
+                </span>
               </div>
-              <h4 className="text-xl font-black text-[#2C3E50] mb-2 line-clamp-1">{c.title}</h4>
-              <div className="text-xs text-[#2C3E50] flex flex-wrap gap-2 font-bold tracking-wider uppercase mt-4">
-                 <span className="inline-block px-4 py-2 rounded-lg bg-[#F4F4F4] border border-[#4CAF50] self-start">{c.type}</span>
-                 <span className="flex items-center gap-1 px-3 py-2 rounded-lg bg-[#F4F4F4] border border-[#F4F4F4]">🎯 {c.totalPoints || 0} PTS</span>
-                 <span className="flex items-center gap-1 px-3 py-2 rounded-lg bg-[#F4F4F4] border border-[#F4F4F4]">📋 {c.questions?.length || 0} ITEMS</span>
+              <h4 className="text-lg font-bold text-slate-800 line-clamp-1 mb-3">{c.title}</h4>
+              <div className="flex flex-wrap gap-2">
+                 <span className="text-xs font-medium px-2.5 py-1 rounded-md bg-slate-100 text-slate-600 uppercase tracking-wide">{c.type}</span>
+                 <span className="text-xs font-medium px-2.5 py-1 rounded-md bg-slate-100 text-slate-600">🎯 {c.totalPoints || 0} pts</span>
+                 <span className="text-xs font-medium px-2.5 py-1 rounded-md bg-slate-100 text-slate-600">📋 {c.questions?.length || 0} items</span>
               </div>
             </div>
-            <div className="pt-4 border-t-2 border-[#F4F4F4] flex items-center justify-end gap-3 mt-auto">
-              <button onClick={(e) => { e.stopPropagation(); fetchSubmissions(c.id, c.url); }} className="text-[#007ACC] text-xs font-black uppercase flex items-center gap-1 bg-[#F4F4F4] px-4 py-2 rounded-xl border border-transparent hover:border-[#007ACC] hover:bg-[#007ACC]/10 transition-colors">
-                <ListChecks size={14} /> Submissions
+            <div className="pt-4 border-t border-slate-100 flex items-center justify-end gap-2 mt-auto">
+              <button onClick={(e) => { e.stopPropagation(); fetchSubmissions(c.id, c.url); }} className="text-slate-600 text-xs font-bold flex items-center gap-1.5 bg-slate-50 px-3 py-1.5 rounded-lg hover:text-indigo-600 border border-slate-200 hover:border-indigo-300 transition-colors">
+                <Users size={14} strokeWidth={1.5} /> Submissions
               </button>
-              <button onClick={(e) => { e.stopPropagation(); openEditor(c); }} className="text-[#F0A500] hover:text-[#FFFFFF] hover:bg-[#F0A500] transition-colors bg-[#F0A500]/10 p-2 rounded-xl border border-transparent">
-                <Edit3 size={16} />
+              <button onClick={(e) => { e.stopPropagation(); openEditor(c); }} className="text-slate-400 hover:text-indigo-600 bg-slate-50 p-1.5 rounded-lg border border-slate-200 hover:border-indigo-300 transition-colors">
+                <Edit3 size={16} strokeWidth={1.5} />
               </button>
-              <button onClick={(e) => handleDelete(e, c.id)} className="text-red-500 hover:text-[#FFFFFF] hover:bg-red-500 transition-colors bg-red-50 p-2 rounded-xl border border-transparent">
-                <Trash2 size={16} />
+              <button onClick={(e) => handleDelete(e, c.id)} className="text-slate-400 hover:text-rose-600 hover:bg-rose-50 bg-slate-50 p-1.5 rounded-lg border border-slate-200 hover:border-rose-200 transition-colors">
+                <Trash2 size={16} strokeWidth={1.5} />
               </button>
             </div>
           </motion.div>
         ))}
         {list.length === 0 && (
-           <div className="col-span-full flex flex-col items-center justify-center p-12 bg-[#F4F4F4] rounded-2xl border-4 border-dashed border-[#4CAF50] text-[#2C3E50]/70 text-center">
-              <Code size={40} className="text-[#007ACC] mb-4"/>
-              <p className="text-xl font-black text-[#2C3E50]">No assessments found.</p>
-              <p className="text-sm mt-2">Start by creating a new quiz or coding contest.</p>
+           <div className="col-span-full flex flex-col items-center justify-center p-12 glass-panel border border-dashed border-slate-300 text-slate-500 text-center">
+              <Code size={40} className="text-indigo-300 mb-4" strokeWidth={1.5}/>
+              <p className="text-lg font-semibold text-slate-700">No assessments found.</p>
+              <p className="text-sm mt-1">Start by creating a new quiz or coding contest.</p>
            </div>
         )}
       </AnimatePresence>
@@ -774,70 +789,98 @@ export default function AdminDashboard() {
   };
 
   return (
-    <>
-      <div className="flex min-h-screen bg-slate-50 text-[#2C3E50] font-sans">
-        {/* Mobile menu button */}
-        <button 
-          onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-          className="md:hidden fixed top-4 right-4 z-50 p-2 bg-white rounded-lg shadow-md border border-slate-200"
-        >
-          {isSidebarOpen ? <X size={24} className="text-slate-600"/> : <Menu size={24} className="text-slate-600"/>}
-        </button>
+    <div className="flex h-screen bg-slate-50 text-slate-900 font-sans overflow-hidden">
+      {/* Mobile menu button */}
+      <button 
+        onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+        className="md:hidden fixed top-4 right-4 z-50 p-2 glass-panel shadow-sm text-indigo-600"
+      >
+        {isSidebarOpen ? <X size={24} strokeWidth={1.5} /> : <Menu size={24} strokeWidth={1.5} />}
+      </button>
 
-        {/* Sidebar */}
-        <aside className={`fixed inset-y-0 left-0 z-40 w-64 bg-white border-r border-slate-200 transform transition-transform duration-300 ease-in-out md:translate-x-0 md:static md:w-72 flex flex-col ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
-          <div className="flex items-center justify-center h-20 border-b border-slate-100 flex-shrink-0">
-            <h2 className="text-2xl font-black tracking-tight text-[#007ACC]">Admin<span className="text-[#2C3E50]">Panel</span></h2>
+      {/* Slim Collapsible Sidebar */}
+      <motion.aside 
+        initial={false}
+        animate={{ width: isSidebarOpen ? 280 : 80 }}
+        className={`fixed inset-y-0 left-0 z-40 glass-panel border-r border-slate-200 transform md:translate-x-0 md:static flex flex-col transition-transform duration-300 shrink-0 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}`}
+      >
+        <div className="flex justify-center items-center gap-2 py-6 border-b border-slate-100 mx-2">
+           <div className={`w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center shadow-md shadow-indigo-500/20 shrink-0`}>
+             <ShieldAlert className="text-white" size={24} strokeWidth={1.5} />
+           </div>
+           {isSidebarOpen && <span className="font-extrabold text-xl tracking-tight text-slate-800 whitespace-nowrap">AdminPanel</span>}
+        </div>
+
+        <nav className="flex-1 px-3 py-6 space-y-2 overflow-y-auto overflow-x-hidden">
+          <button onClick={() => {setSidebarView('overview'); setIsSidebarOpen(false);}} className={`w-full flex items-center gap-3 px-3 py-3 rounded-lg font-medium transition-all ${sidebarView === 'overview' ? 'bg-indigo-50 text-indigo-700' : 'text-slate-500 hover:bg-slate-50'} whitespace-nowrap`}>
+            <LayoutDashboard size={20} className="shrink-0" strokeWidth={1.5} /> {isSidebarOpen && <span>Overview</span>}
+          </button>
+          <button onClick={() => {setSidebarView('contests'); setIsSidebarOpen(false);}} className={`w-full flex items-center gap-3 px-3 py-3 rounded-lg font-medium transition-all ${sidebarView === 'contests' ? 'bg-indigo-50 text-indigo-700' : 'text-slate-500 hover:bg-slate-50'} whitespace-nowrap`}>
+            <Code size={20} className="shrink-0" strokeWidth={1.5} /> {isSidebarOpen && <span>Coding Contests</span>}
+          </button>
+          <button onClick={() => {setSidebarView('quizzes'); setIsSidebarOpen(false);}} className={`w-full flex items-center gap-3 px-3 py-3 rounded-lg font-medium transition-all ${sidebarView === 'quizzes' ? 'bg-indigo-50 text-indigo-700' : 'text-slate-500 hover:bg-slate-50'} whitespace-nowrap`}>
+            <ListChecks size={20} className="shrink-0" strokeWidth={1.5} /> {isSidebarOpen && <span>Quizzes</span>}
+          </button>
+          <button onClick={() => {setSidebarView('history'); setIsSidebarOpen(false);}} className={`w-full flex items-center gap-3 px-3 py-3 rounded-lg font-medium transition-all ${sidebarView === 'history' ? 'bg-indigo-50 text-indigo-700' : 'text-slate-500 hover:bg-slate-50'} whitespace-nowrap`}>
+            <History size={20} className="shrink-0" strokeWidth={1.5} /> {isSidebarOpen && <span>History</span>}
+          </button>
+          <button onClick={() => {setSidebarView('analytics'); setIsSidebarOpen(false); fetchStudents();}} className={`w-full flex items-center gap-3 px-3 py-3 rounded-lg font-medium transition-all ${sidebarView === 'analytics' ? 'bg-indigo-50 text-indigo-700' : 'text-slate-500 hover:bg-slate-50'} whitespace-nowrap`}>
+            <BarChart3 size={20} className="shrink-0" strokeWidth={1.5} /> {isSidebarOpen && <span>Analytics</span>}
+          </button>
+          <button onClick={() => {setSidebarView('students'); setIsSidebarOpen(false);}} className={`w-full flex items-center gap-3 px-3 py-3 rounded-lg font-medium transition-all ${sidebarView === 'students' ? 'bg-indigo-50 text-indigo-700' : 'text-slate-500 hover:bg-slate-50'} whitespace-nowrap`}>
+            <Users size={20} className="shrink-0" strokeWidth={1.5} /> {isSidebarOpen && <span>Onboard Students</span>}
+          </button>
+          {userRole === 'ROLE_SUPER_ADMIN' && (
+            <button onClick={() => {setSidebarView('admins'); setIsSidebarOpen(false);}} className={`w-full flex items-center gap-3 px-3 py-3 rounded-lg font-medium transition-all ${sidebarView === 'admins' ? 'bg-indigo-50 text-indigo-700' : 'text-slate-500 hover:bg-slate-50'} whitespace-nowrap`}>
+              <ShieldAlert size={20} className="shrink-0" strokeWidth={1.5} /> {isSidebarOpen && <span>Manage Admins</span>}
+            </button>
+          )}
+        </nav>
+
+        <div className="p-4 border-t border-slate-100">
+           <button onClick={() => navigate('/login')} className="w-full flex items-center justify-center gap-3 px-3 py-3 rounded-lg font-medium text-rose-500 hover:bg-rose-50 transition-colors">
+             <X size={20} className="shrink-0" strokeWidth={1.5} /> {isSidebarOpen && <span>Sign Out</span>}
+           </button>
+        </div>
+      </motion.aside>
+
+      {/* Main Content Area */}
+      <main className="flex-1 flex flex-col h-full overflow-hidden">
+
+        {/* Top Navbar Header */}
+        <header className="flex items-center justify-between px-8 py-4 glass-panel border-b border-slate-200 z-10 m-4 mb-0 rounded-2xl shrink-0">
+          <div className="flex items-center gap-4">
+            <button onClick={() => window.history.back()} className="p-2 rounded-lg text-slate-400 hover:bg-slate-100 transition-colors">
+              <ArrowLeft size={18} strokeWidth={1.5} />
+            </button>
+            <button onClick={() => window.location.reload()} className="p-2 rounded-lg text-slate-400 hover:bg-slate-100 transition-colors">
+              <RefreshCw size={18} strokeWidth={1.5} />
+            </button>
+            <button onClick={() => setIsSidebarOpen(!isSidebarOpen)} className="hidden md:block p-2 rounded-lg text-slate-400 hover:bg-slate-100 transition-colors">
+              <Menu size={18} strokeWidth={1.5} />
+            </button>
+            <h1 className="text-xl font-bold tracking-tight text-slate-800 ml-2 capitalize">
+              {sidebarView.replace('-', ' ')}
+            </h1>
           </div>
-          <div className="flex justify-center gap-4 py-4 border-b-4 border-[#F4F4F4] bg-white z-10 sticky top-0">
-             <button onClick={() => window.history.back()} className="p-2.5 rounded-xl bg-[#F4F4F4] text-[#2C3E50] hover:bg-[#007ACC] hover:text-[#FFFFFF] transition-colors shadow-sm cursor-pointer border border-[#4CAF50]" title="Go Back">
-                <ArrowLeft size={18} />
-             </button>
-             <button onClick={() => window.location.reload()} className="p-2.5 rounded-xl bg-[#F4F4F4] text-[#2C3E50] hover:bg-[#007ACC] hover:text-[#FFFFFF] transition-colors shadow-sm cursor-pointer border border-[#4CAF50]" title="Refresh">
-                <RefreshCw size={18} />
-             </button>
-             <button onClick={() => window.history.forward()} className="p-2.5 rounded-xl bg-[#F4F4F4] text-[#2C3E50] hover:bg-[#007ACC] hover:text-[#FFFFFF] transition-colors shadow-sm cursor-pointer border border-[#4CAF50]" title="Go Forward">
-                <ArrowRight size={18} />
-             </button>
-          </div>
-          <nav className="flex-1 px-4 py-6 space-y-3 overflow-y-auto w-full">
-            <button onClick={() => {setSidebarView('overview'); setIsSidebarOpen(false);}} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition-all ${sidebarView === 'overview' ? 'bg-[#007ACC] text-white shadow-lg shadow-[#007ACC]/30' : 'text-[#2C3E50]/70 hover:text-[#2C3E50] hover:bg-[#F4F4F4]'}`}>
-              <LayoutDashboard size={20} /> Overview
-            </button>
-            <button onClick={() => {setSidebarView('contests'); setIsSidebarOpen(false);}} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition-all ${sidebarView === 'contests' ? 'bg-[#007ACC] text-white shadow-lg shadow-[#007ACC]/30' : 'text-[#2C3E50]/70 hover:text-[#2C3E50] hover:bg-[#F4F4F4]'}`}>
-              <Code size={20} /> Coding Contests
-            </button>
-            <button onClick={() => {setSidebarView('quizzes'); setIsSidebarOpen(false);}} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition-all ${sidebarView === 'quizzes' ? 'bg-[#007ACC] text-white shadow-lg shadow-[#007ACC]/30' : 'text-[#2C3E50]/70 hover:text-[#2C3E50] hover:bg-[#F4F4F4]'}`}>
-              <ListChecks size={20} /> Quizzes
-            </button>
-            <button onClick={() => {setSidebarView('history'); setIsSidebarOpen(false);}} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition-all ${sidebarView === 'history' ? 'bg-[#007ACC] text-white shadow-lg shadow-[#007ACC]/30' : 'text-[#2C3E50]/70 hover:text-[#2C3E50] hover:bg-[#F4F4F4]'}`}>
-              <History size={20} /> History
-            </button>
-            <button onClick={() => {
-              setSidebarView('analytics'); 
-              setIsSidebarOpen(false);
-              fetchStudents(); // Make sure students are loaded for analytics
-            }} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition-all ${sidebarView === 'analytics' ? 'bg-[#007ACC] text-white shadow-lg shadow-[#007ACC]/30' : 'text-[#2C3E50]/70 hover:text-[#2C3E50] hover:bg-[#F4F4F4]'}`}>
-              <BarChart3 size={20} /> Analytics
-            </button>
-            <button onClick={() => {setSidebarView('students'); setIsSidebarOpen(false);}} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition-all ${sidebarView === 'students' ? 'bg-[#007ACC] text-white shadow-lg shadow-[#007ACC]/30' : 'text-[#2C3E50]/70 hover:text-[#2C3E50] hover:bg-[#F4F4F4]'}`}>
-              <Users size={20} /> Onboard Students
-            </button>
-            {userRole === 'ROLE_SUPER_ADMIN' && (
-              <button onClick={() => {setSidebarView('admins'); setIsSidebarOpen(false);}} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition-all ${sidebarView === 'admins' ? 'bg-[#007ACC] text-white shadow-lg shadow-[#007ACC]/30' : 'text-[#2C3E50]/70 hover:text-[#2C3E50] hover:bg-[#F4F4F4]'}`}>
-                <ShieldAlert size={20} /> Manage Admins
-              </button>
+          
+          <div className="flex items-center gap-4">
+            {(sidebarView === 'overview' || sidebarView === 'contests' || sidebarView === 'quizzes') && view === 'home' && (
+              <div className="flex gap-3">
+                <button onClick={() => navigate('/admin/create-quiz')} className="bg-white px-4 py-2 rounded-lg border border-slate-200 text-indigo-600 flex items-center gap-2 hover:bg-indigo-50 hover:border-indigo-200 font-semibold transition-all shadow-sm text-sm">
+                  <PlusCircle size={16} strokeWidth={1.5} /> New Quiz
+                </button>
+                <button onClick={() => openEditor(null, false)} className="btn-primary px-4 py-2 rounded-lg flex items-center gap-2 text-sm font-semibold">
+                  <Code size={16} strokeWidth={1.5} /> New Contest
+                </button>
+              </div>
             )}
-            <div className="pt-6 mt-4 border-t-2 border-[#F4F4F4]">
-              <button onClick={() => navigate('/login')} className="w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold text-red-500 hover:bg-red-50 hover:text-red-700 transition-colors">
-                <X size={20} /> Sign Out
-              </button>
-            </div>
-          </nav>
-        </aside>
+          </div>
+        </header>
 
-        {/* Main Content Area */}
-        <main className="flex-1 p-6 md:p-10 w-full overflow-y-auto max-h-screen relative z-10 pb-20">
+        {/* Scrollable Main Area */}
+        <div className="flex-1 overflow-y-auto p-4 md:p-8">
+          <div className="max-w-6xl mx-auto w-full relative">
           
           {/* AI Generation Modal overlay outside view switcher */}
           <AnimatePresence>
@@ -908,24 +951,6 @@ export default function AdminDashboard() {
 
           {view === 'home' ? (
             <>
-          <header className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-10 mt-8 md:mt-0">
-            <div>
-              <h1 className="text-3xl font-extrabold text-[#2C3E50] tracking-tight capitalize">
-                {sidebarView === 'overview' ? 'Dashboard Overview' : sidebarView}
-              </h1>
-              <p className="text-slate-500 font-medium">Manage your system content seamlessly</p>
-            </div>
-            {(sidebarView === 'overview' || sidebarView === 'contests' || sidebarView === 'quizzes') && (
-              <div className="flex gap-3">
-                <button onClick={() => navigate('/admin/create-quiz')} className="bg-white px-5 py-2.5 rounded-xl border border-slate-200 text-brand-600 flex items-center gap-2 hover:bg-brand-50 hover:border-brand-100 font-bold transition-all shadow-sm">
-                  <PlusCircle size={18} /> New Quiz
-                </button>
-                <button onClick={() => openEditor(null, false)} className="btn-primary px-5 py-2.5 rounded-xl flex items-center gap-2 font-bold shadow-md shadow-brand-500/20">
-                  <Code size={18} /> New Contest
-                </button>
-              </div>
-            )}
-          </header>
 
           {uploadMessage && (
             <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="mb-6 p-4 bg-green-50 border border-green-200 rounded-xl flex items-center gap-3 text-green-700 font-bold">
@@ -1158,9 +1183,26 @@ export default function AdminDashboard() {
                          <Download size={16} /> Export CSV
                       </button>
                    </div>
-                </div>
+                 </div>
 
-                {/* Filters Action Bar */}
+                 <div className="flex border-b border-slate-200 mb-6">
+                    <button 
+                      onClick={() => setSubmissionTab('submissions')} 
+                      className={`px-6 py-3 font-bold text-sm tracking-wide uppercase transition-colors ${submissionTab === 'submissions' ? 'border-b-2 border-brand-500 text-brand-700' : 'text-slate-500 hover:text-slate-700'}`}
+                    >
+                      Submissions
+                    </button>
+                    <button 
+                      onClick={() => setSubmissionTab('registered')} 
+                      className={`px-6 py-3 font-bold text-sm tracking-wide uppercase transition-colors ${submissionTab === 'registered' ? 'border-b-2 border-brand-500 text-brand-700' : 'text-slate-500 hover:text-slate-700'}`}
+                    >
+                      Registered Students
+                    </button>
+                 </div>
+
+                 {submissionTab === 'submissions' && (
+                 <>
+                 {/* Filters Action Bar */}
                 <div className="glass-panel p-4 bg-white rounded-xl shadow-sm border border-slate-200 flex flex-col md:flex-row items-center gap-4">
                    <div className="flex-1 w-full relative">
                       <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
@@ -1191,7 +1233,7 @@ export default function AdminDashboard() {
                    {filteredSubmissions.length > 0 ? (
                       <table className="w-full text-left">
                          <thead className="bg-slate-50 sticky top-0 font-bold text-slate-500 uppercase tracking-widest text-[10px] border-b border-slate-200">
-                            <tr><th className="px-6 py-4">Student</th><th className="px-6 py-4">Email Address</th><th className="px-6 py-4">Total Score</th><th className="px-6 py-4 text-right">Completion Time (IST)</th></tr>
+                            <tr><th className="px-6 py-4">Student</th><th className="px-6 py-4">Email Address</th><th className="px-6 py-4">Total Score</th><th className="px-6 py-4 text-center">Time Taken</th><th className="px-6 py-4 text-right">Completion Time (IST)</th></tr>
                          </thead>
                          <tbody className="divide-y divide-slate-100 font-bold text-sm">
                             {filteredSubmissions.map((sub, i) => (
@@ -1202,6 +1244,7 @@ export default function AdminDashboard() {
                                   </td>
                                   <td className="px-6 py-4 text-slate-500 font-medium">{sub.studentEmail}</td>
                                   <td className="px-6 py-4 text-green-600">{sub.totalPoints} pts</td>
+                                  <td className="px-6 py-4 text-slate-500 font-medium text-center">{sub.timeTakenMinutes ? `${sub.timeTakenMinutes} min` : 'N/A'}</td>
                                   <td className="px-6 py-4 text-right text-slate-500 font-medium">{new Date(sub.finishTime).toLocaleString()}</td>
                                </tr>
                             ))}
@@ -1211,8 +1254,41 @@ export default function AdminDashboard() {
                       <div className="p-10 text-center text-slate-400 font-bold border-2 border-dashed border-slate-200 rounded-xl bg-slate-50">No candidates have taken this assessment yet.</div>
                    )}
                 </div>
-             </div>
-          )}
+                 </>
+                 )}
+
+                 {submissionTab === 'registered' && (
+                 <div className="glass-panel bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+                    {registeredStudentsList.length > 0 ? (
+                       <table className="w-full text-left">
+                          <thead className="bg-slate-50 sticky top-0 font-bold text-slate-500 uppercase tracking-widest text-[10px] border-b border-slate-200">
+                             <tr><th className="px-6 py-4">Student</th><th className="px-6 py-4">Email Address</th><th className="px-6 py-4">Status</th></tr>
+                          </thead>
+                          <tbody className="divide-y divide-slate-100 font-bold text-sm">
+                             {registeredStudentsList.map((email, i) => {
+                                const stu = studentsList.find(s => s.email === email);
+                                return (
+                                <tr key={i} className="hover:bg-slate-50 transition-colors">
+                                   <td className="px-6 py-4 text-[#2C3E50] flex items-center gap-3">
+                                      <div className="w-8 h-8 rounded-full bg-brand-100 text-brand-700 flex items-center justify-center border border-brand-200">{((stu?.fullName || email)[0]).toUpperCase()}</div>
+                                      {stu?.fullName || 'Unknown Student'}
+                                   </td>
+                                   <td className="px-6 py-4 text-slate-500 font-medium">{email}</td>
+                                   <td className="px-6 py-4">
+                                      <span className="bg-green-50 text-green-700 font-bold px-3 py-1 rounded-full text-[10px] tracking-wide uppercase border border-green-100">Registered</span>
+                                   </td>
+                                </tr>
+                                );
+                             })}
+                          </tbody>
+                       </table>
+                    ) : (
+                       <div className="p-10 text-center text-slate-400 font-bold border-2 border-dashed border-slate-200 rounded-xl bg-slate-50">No students have signed up yet.</div>
+                    )}
+                 </div>
+                 )}
+              </div>
+           )}
 
           {sidebarView === 'admins' && userRole === 'ROLE_SUPER_ADMIN' && (
              <div className="space-y-8">
@@ -1333,10 +1409,14 @@ export default function AdminDashboard() {
                   <input type="text" value={contestName} onChange={(e) => setContestName(e.target.value)} placeholder="Enter title..." className="premium-input w-full p-4 rounded-xl text-lg font-bold placeholder-slate-400" />
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
                   <div>
                     <label className="block text-sm font-bold text-[#2C3E50] mb-2">Max Valid Attempts</label>
                     <input type="number" min="1" value={maxAttempts} onChange={(e) => setMaxAttempts(Math.max(1, e.target.value))} className="premium-input w-full p-4 rounded-xl font-medium" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-bold text-[#2C3E50] mb-2">Total Time (Mins)</label>
+                    <input type="number" min="1" value={durationMinutes} onChange={(e) => setDurationMinutes(Math.max(1, e.target.value))} className="premium-input w-full p-4 rounded-xl font-medium" />
                   </div>
                   <div>
                     <label className="block text-sm font-bold text-[#2C3E50] mb-2">Start Time (IST)</label>
@@ -1516,53 +1596,30 @@ export default function AdminDashboard() {
         {deleteConfirmId && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
             <motion.div initial={{ scale: 0.9 }} animate={{ scale: 1 }} exit={{ scale: 0.9 }} className="glass-panel p-6 max-w-sm w-full relative pointer-events-auto">
-              <h3 className="text-xl font-bold text-[#2C3E50] mb-2">Delete Assessment</h3>
+              <h3 className="text-xl font-bold text-slate-800 mb-2">Delete Assessment</h3>
               <p className="text-sm text-slate-600 mb-6">Are you sure you want to delete this assessment? This action cannot be undone.</p>
               <div className="flex justify-end gap-3">
                 <button onClick={() => setDeleteConfirmId(null)} className="px-4 py-2 rounded-lg font-bold text-slate-600 hover:bg-slate-100 transition-colors">Cancel</button>
-                <button onClick={confirmDelete} className="btn-danger px-4 py-2 rounded-lg font-bold">Delete</button>
+                <button onClick={confirmDelete} className="bg-rose-500 text-white px-4 py-2 rounded-lg font-bold shadow-md shadow-rose-500/20 hover:bg-rose-600 transition-all">Delete</button>
               </div>
             </motion.div>
           </motion.div>
         )}
         {toastMessage && (
           <motion.div initial={{ opacity: 0, y: 50 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 50 }} className="fixed bottom-10 left-1/2 -translate-x-1/2 z-[100] pointer-events-auto">
-            <div className={`px-6 py-3 rounded-xl shadow-lg font-bold flex items-center gap-2 ${toastMessage.type === 'error' ? 'bg-red-50 text-red-700 border border-red-200' : 'bg-green-50 text-green-700 border border-green-200'}`}>
-              {toastMessage.type === 'error' ? <X size={18} /> : <CheckCircle2 size={18} />}
+            <div className={`px-6 py-3 rounded-2xl shadow-xl font-bold flex items-center gap-3 backdrop-blur-md border ${toastMessage.type === 'error' ? 'bg-rose-50 border-rose-200 text-rose-700 shadow-rose-500/20' : 'bg-emerald-50 border-emerald-200 text-emerald-700 shadow-emerald-500/20'}`}>
+              {toastMessage.type === 'error' ? <X size={18} strokeWidth={1.5} /> : <CheckCircle2 size={18} strokeWidth={1.5} />}
               {toastMessage.title}
-              <button onClick={() => setToastMessage(null)} className="ml-4 opacity-70 hover:opacity-100"><X size={14}/></button>
+              <button onClick={() => setToastMessage(null)} className="ml-4 opacity-70 hover:opacity-100 transition-opacity"><X size={14} strokeWidth={1.5} /></button>
             </div>
           </motion.div>
         )}
       </AnimatePresence>
             </div>
           )}
-        </main>
-      </div>
-
-      <AnimatePresence>
-        {deleteConfirmId && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-            <motion.div initial={{ scale: 0.9 }} animate={{ scale: 1 }} exit={{ scale: 0.9 }} className="glass-panel p-6 max-w-sm w-full relative">
-              <h3 className="text-xl font-bold text-[#2C3E50] mb-2">Delete Assessment</h3>
-              <p className="text-sm text-slate-600 mb-6">Are you sure you want to delete this assessment? This action cannot be undone.</p>
-              <div className="flex justify-end gap-3">
-                <button onClick={() => setDeleteConfirmId(null)} className="px-4 py-2 rounded-lg font-bold text-slate-600 hover:bg-slate-100 transition-colors">Cancel</button>
-                <button onClick={confirmDelete} className="btn-danger px-4 py-2 rounded-lg font-bold">Delete</button>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-        {toastMessage && (
-          <motion.div initial={{ opacity: 0, y: 50 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 50 }} className="fixed bottom-10 left-1/2 -translate-x-1/2 z-[100]">
-            <div className={`px-6 py-3 rounded-xl shadow-lg font-bold flex items-center gap-2 ${toastMessage.type === 'error' ? 'bg-red-50 text-red-700 border border-red-200' : 'bg-green-50 text-green-700 border border-green-200'}`}>
-              {toastMessage.type === 'error' ? <X size={18} /> : <CheckCircle2 size={18} />}
-              {toastMessage.title}
-              <button onClick={() => setToastMessage(null)} className="ml-4 opacity-70 hover:opacity-100"><X size={14}/></button>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </>
+          </div>
+        </div>
+      </main>
+    </div>
   );
 }

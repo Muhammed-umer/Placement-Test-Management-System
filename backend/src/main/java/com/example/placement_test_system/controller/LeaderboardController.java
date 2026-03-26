@@ -105,6 +105,10 @@ public class LeaderboardController {
 
         LeaderboardEntry entry = leaderboardRepository.findByAssessmentIdAndStudentEmail(assessmentId, studentEmail);
         int maxAttempts = Math.max(1, assessment.getMaxAttempts());
+        int timeTakenMinutes = 0;
+        if (payload.containsKey("timeTakenMinutes")) {
+            timeTakenMinutes = Integer.parseInt(payload.get("timeTakenMinutes").toString());
+        }
 
         if (entry == null) {
             entry = LeaderboardEntry.builder()
@@ -113,6 +117,7 @@ public class LeaderboardController {
                     .studentName(studentName)
                     .totalPoints(points)
                     .attempts(1)
+                    .timeTakenMinutes(timeTakenMinutes)
                     .finishTime(LocalDateTime.now())
                     .build();
         } else {
@@ -121,6 +126,7 @@ public class LeaderboardController {
             }
             entry.setTotalPoints(Math.max(entry.getTotalPoints(), points));
             entry.setAttempts(entry.getAttempts() + 1);
+            entry.setTimeTakenMinutes(timeTakenMinutes);
             entry.setFinishTime(LocalDateTime.now());
         }
 
