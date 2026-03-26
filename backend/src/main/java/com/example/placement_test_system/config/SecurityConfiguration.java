@@ -40,6 +40,7 @@ public class SecurityConfiguration {
                 .requestMatchers("/api/v1/assessments", "/api/v1/assessments/**").permitAll()
                 .requestMatchers("/api/v1/code/**").permitAll()
                 .requestMatchers("/api/v1/leaderboard/**").permitAll()
+                .requestMatchers("/api/v1/ai/**").permitAll()  // Permit AI endpoint for testing
                 .requestMatchers("/error").permitAll()
                 .anyRequest().authenticated()
             )

@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import * as pdfjsLib from 'pdfjs-dist';
+import CodeForcesProblemCard from '../components/CodeForcesProblemCard';
 export default function CreateQuiz() {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('details');
@@ -60,7 +61,7 @@ export default function CreateQuiz() {
     setIsAiGenerating(true);
     try {
       const token = sessionStorage.getItem('token');
-      const res = await fetch('http://localhost:8081/api/v1/ai/generate', {
+      const res = await fetch('http://localhost:8082/api/v1/ai/generate', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -76,19 +77,42 @@ export default function CreateQuiz() {
       });
       if (res.ok) {
         const generated = await res.json();
-        if (Array.isArray(generated)) {
-          setQuestions([...questions, ...generated]);
-          setToastMessage({ title: 'AI successfully generated questions!', type: 'success' });
+        
+        if (Array.isArray(generated) && generated.length > 0) {
+          // Preserve CodeForces problem data as-is, or map regular questions
+          const mappedQuestions = generated.map(q => {
+            // If this is a CodeForces problem, keep all properties
+            if (q.codeforces_link) {
+              return q; // Keep CodeForces object as-is
+            }
+            // Otherwise, map regular questions
+            return {
+              questionType: q.questionType || 'MCQ',
+              title: q.title || '',
+              description: q.description || '',
+              options: Array.isArray(q.options) ? q.options : [],
+              correctAnswer: q.correctAnswer || '',
+              points: q.points || 10
+            };
+          });
+          
+          console.log('[Frontend] Successfully added ' + mappedQuestions.length + ' new questions');
+          setQuestions([...questions, ...mappedQuestions]);
+          setToastMessage({ title: 'AI successfully generated ' + mappedQuestions.length + ' question(s)!', type: 'success' });
           setAiModalOpen(false);
+          setAiTopic('');  // Reset topic
         } else {
-          setToastMessage({ title: 'Unexpected AI response format.', type: 'error' });
+          setToastMessage({ title: 'AI returned no questions. Try again with different settings.', type: 'error' });
+          console.error('[Frontend] Generated data is not an array or empty:', generated);
         }
       } else {
-        setToastMessage({ title: 'AI generation failed.', type: 'error' });
+        const errorText = await res.text();
+        setToastMessage({ title: 'AI generation failed: ' + res.status, type: 'error' });
+        console.error('[Frontend] API response not ok:', res.status, errorText);
       }
     } catch (err) {
-      console.error(err);
-      setToastMessage({ title: 'AI request failed.', type: 'error' });
+      console.error('[Frontend] AI request error:', err);
+      setToastMessage({ title: 'AI request failed: ' + err.message, type: 'error' });
     } finally {
       setIsAiGenerating(false);
     }
@@ -434,117 +458,127 @@ export default function CreateQuiz() {
                 </button>
 
                 {questions.map((q, index) => (
-                  <div key={index} className="glass-panel p-6 rounded-2xl relative border-l-4 border-l-[#007ACC] shadow-xl bg-[#FFFFFF]/40">
-                    <button onClick={() => removeQuestion(index)} className="absolute top-4 right-4 text-[#2C3E50] hover:text-rose-400 transition-colors bg-[#FFFFFF]/50 p-2 rounded-lg">
-                      <Trash2 size={20} />
-                    </button>
+                  q.codeforces_link ? (
+                    <CodeForcesProblemCard 
+                      key={index}
+                      problem={q}
+                      index={index}
+                      onUpdate={updateQuestion}
+                      onRemove={removeQuestion}
+                    />
+                  ) : (
+                    <div key={index} className="glass-panel p-6 rounded-2xl relative border-l-4 border-l-[#007ACC] shadow-xl bg-[#FFFFFF]/40">
+                      <button onClick={() => removeQuestion(index)} className="absolute top-4 right-4 text-[#2C3E50] hover:text-rose-400 transition-colors bg-[#FFFFFF]/50 p-2 rounded-lg">
+                        <Trash2 size={20} />
+                      </button>
 
-                    <div className="mb-6 flex flex-col md:flex-row md:items-center justify-between gap-4 pr-14">
-                      <div className="flex items-center gap-4">
-                        <span className="bg-[#007ACC]/20 text-[#007ACC] w-8 h-8 rounded-lg flex items-center justify-center text-sm border border-[#007ACC]/30 font-bold">{index + 1}</span>
-                        <div className="relative">
-                          <select
-                            value={q.questionType}
-                            onChange={(e) => updateQuestion(index, 'questionType', e.target.value)}
-                            className="appearance-none bg-[#FFFFFF] border-2 border-[#4CAF50] text-[#007ACC] text-sm font-bold pl-3 pr-8 py-1.5 rounded-lg outline-none focus:ring-4 focus:ring-[#007ACC]/20 cursor-pointer shadow-sm hover:border-[#007ACC] transition-all"
-                          >
-                            <option value="MCQ">Multiple Choice</option>
-                            <option value="CHECKBOX">Checkboxes</option>
-                            <option value="SHORT_ANSWER">Short Answer</option>
-                            <option value="LONG_ANSWER">Long Paragraph</option>
-                            <option value="FILL_UP">Fill in the Blanks</option>
-                          </select>
-                          <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-[#007ACC]">
-                            <svg className="w-4 h-4 fill-current" viewBox="0 0 20 20"><path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" /></svg>
+                      <div className="mb-6 flex flex-col md:flex-row md:items-center justify-between gap-4 pr-14">
+                        <div className="flex items-center gap-4">
+                          <span className="bg-[#007ACC]/20 text-[#007ACC] w-8 h-8 rounded-lg flex items-center justify-center text-sm border border-[#007ACC]/30 font-bold">{index + 1}</span>
+                          <div className="relative">
+                            <select
+                              value={q.questionType}
+                              onChange={(e) => updateQuestion(index, 'questionType', e.target.value)}
+                              className="appearance-none bg-[#FFFFFF] border-2 border-[#4CAF50] text-[#007ACC] text-sm font-bold pl-3 pr-8 py-1.5 rounded-lg outline-none focus:ring-4 focus:ring-[#007ACC]/20 cursor-pointer shadow-sm hover:border-[#007ACC] transition-all"
+                            >
+                              <option value="MCQ">Multiple Choice</option>
+                              <option value="CHECKBOX">Checkboxes</option>
+                              <option value="SHORT_ANSWER">Short Answer</option>
+                              <option value="LONG_ANSWER">Long Paragraph</option>
+                              <option value="FILL_UP">Fill in the Blanks</option>
+                            </select>
+                            <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-[#007ACC]">
+                              <svg className="w-4 h-4 fill-current" viewBox="0 0 20 20"><path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" /></svg>
+                            </div>
                           </div>
                         </div>
+                        <div className="flex items-center gap-3 bg-[#FFFFFF] p-2 rounded-lg border border-[#4CAF50]">
+                          <span className="text-sm font-medium text-[#2C3E50]">Points Value:</span>
+                          <input type="number" value={q.points} onChange={(e) => updateQuestion(index, 'points', e.target.value)} className="bg-[#FFFFFF] border-none w-16 p-1 rounded-md text-center text-[#007ACC] font-bold outline-none focus:ring-1 focus:ring-[#007ACC]" />
+                        </div>
                       </div>
-                      <div className="flex items-center gap-3 bg-[#FFFFFF] p-2 rounded-lg border border-[#4CAF50]">
-                        <span className="text-sm font-medium text-[#2C3E50]">Points Value:</span>
-                        <input type="number" value={q.points} onChange={(e) => updateQuestion(index, 'points', e.target.value)} className="bg-[#FFFFFF] border-none w-16 p-1 rounded-md text-center text-[#007ACC] font-bold outline-none focus:ring-1 focus:ring-[#007ACC]" />
-                      </div>
-                    </div>
 
-                    <div className="space-y-5">
-                      <textarea
-                        placeholder="Enter the question text here..."
-                        value={q.title}
-                        onChange={(e) => updateQuestion(index, 'title', e.target.value)}
-                        className="premium-input w-full p-5 rounded-xl min-h-[100px] text-lg font-medium"
-                      />
+                      <div className="space-y-5">
+                        <textarea
+                          placeholder="Enter the question text here..."
+                          value={q.title}
+                          onChange={(e) => updateQuestion(index, 'title', e.target.value)}
+                          className="premium-input w-full p-5 rounded-xl min-h-[100px] text-lg font-medium"
+                        />
 
-                      {q.questionType === 'MCQ' || q.questionType === 'CHECKBOX' ? (
-                        <>
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-[#FFFFFF]/40 p-5 rounded-xl border border-[#4CAF50]/50">
-                            <div className="col-span-full flex justify-between items-center mb-2">
-                              <h4 className="text-sm font-bold text-[#2C3E50] uppercase tracking-widest">Options</h4>
-                              <button onClick={() => addOption(index)} className="text-xs text-[#007ACC] flex items-center gap-1 hover:text-[#F0A500]">
-                                <PlusCircle size={14} /> Add Option
-                              </button>
-                            </div>
-                            {q.options.map((opt, oIdx) => (
-                              <div key={oIdx} className="flex items-center gap-3 relative group">
-                                <span className="font-bold text-[#2C3E50] text-sm w-6 text-center">{['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'][oIdx] || oIdx + 1}</span>
-                                <input
-                                  type="text"
-                                  placeholder={`Option ${['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'][oIdx] || oIdx + 1} value`}
-                                  value={opt}
-                                  onChange={(e) => {
-                                    const newOptions = [...q.options];
-                                    newOptions[oIdx] = e.target.value;
-                                    updateQuestion(index, 'options', newOptions);
-                                  }}
-                                  className={`premium-input w-full p-3 rounded-lg border transition-colors pr-10 ${q.correctAnswer === opt && opt !== '' ? 'border-[#007ACC] bg-[#007ACC]/10 text-emerald-100' : 'border-[#4CAF50]'}`}
-                                />
-                                {q.options.length > 2 && (
-                                  <button onClick={() => removeOption(index, oIdx)} className="absolute right-3 top-1/2 -translate-y-1/2 text-rose-500/50 hover:text-rose-500 opacity-0 group-hover:opacity-100 transition-opacity">
-                                    <Trash2 size={16} />
-                                  </button>
-                                )}
+                        {q.questionType === 'MCQ' || q.questionType === 'CHECKBOX' ? (
+                          <>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-[#FFFFFF]/40 p-5 rounded-xl border border-[#4CAF50]/50">
+                              <div className="col-span-full flex justify-between items-center mb-2">
+                                <h4 className="text-sm font-bold text-[#2C3E50] uppercase tracking-widest">Options</h4>
+                                <button onClick={() => addOption(index)} className="text-xs text-[#007ACC] flex items-center gap-1 hover:text-[#F0A500]">
+                                  <PlusCircle size={14} /> Add Option
+                                </button>
                               </div>
-                            ))}
-                          </div>
+                              {q.options.map((opt, oIdx) => (
+                                <div key={oIdx} className="flex items-center gap-3 relative group">
+                                  <span className="font-bold text-[#2C3E50] text-sm w-6 text-center">{['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'][oIdx] || oIdx + 1}</span>
+                                  <input
+                                    type="text"
+                                    placeholder={`Option ${['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'][oIdx] || oIdx + 1} value`}
+                                    value={opt}
+                                    onChange={(e) => {
+                                      const newOptions = [...q.options];
+                                      newOptions[oIdx] = e.target.value;
+                                      updateQuestion(index, 'options', newOptions);
+                                    }}
+                                    className={`premium-input w-full p-3 rounded-lg border transition-colors pr-10 ${q.correctAnswer === opt && opt !== '' ? 'border-[#007ACC] bg-[#007ACC]/10 text-emerald-100' : 'border-[#4CAF50]'}`}
+                                  />
+                                  {q.options.length > 2 && (
+                                    <button onClick={() => removeOption(index, oIdx)} className="absolute right-3 top-1/2 -translate-y-1/2 text-rose-500/50 hover:text-rose-500 opacity-0 group-hover:opacity-100 transition-opacity">
+                                      <Trash2 size={16} />
+                                    </button>
+                                  )}
+                                </div>
+                              ))}
+                            </div>
 
+                            <div className="pt-2">
+                              <label className="block text-sm font-medium text-[#007ACC] mb-2">Mark Correct Answer</label>
+                              <div className="relative">
+                                <select
+                                  value={q.correctAnswer}
+                                  onChange={(e) => updateQuestion(index, 'correctAnswer', e.target.value)}
+                                  className="appearance-none premium-input w-full pl-4 pr-10 py-3 rounded-lg bg-[#FFFFFF] border-2 border-[#4CAF50] focus:border-[#007ACC] focus:ring-4 focus:ring-[#007ACC]/20 cursor-pointer font-medium transition-all shadow-sm"
+                                >
+                                  <option value="">-- Choose correct option --</option>
+                                  {q.options.map((opt, oIdx) => opt && (
+                                    <option key={oIdx} value={opt}>Option {['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'][oIdx] || oIdx + 1} ({opt})</option>
+                                  ))}
+                                </select>
+                                <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-[#007ACC]">
+                                  <svg className="w-5 h-5 fill-current" viewBox="0 0 20 20"><path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" /></svg>
+                                </div>
+                              </div>
+                            </div>
+                          </>
+                        ) : q.questionType === 'SHORT_ANSWER' || q.questionType === 'LONG_ANSWER' ? (
+                          <div className="pt-2 border-2 border-dashed border-[#4CAF50]/50 rounded-xl p-6 text-center bg-[#FFFFFF]/40">
+                            <p className="text-[#2C3E50] font-medium mb-2">This is a descriptive {q.questionType === 'SHORT_ANSWER' ? 'short' : 'long'} answer question.</p>
+                            <p className="text-xs text-[#2C3E50] italic">Students will receive a text area to write their response. Manual evaluation is supported.</p>
+                            <input type="hidden" value={q.correctAnswer = 'MANUAL_EVALUATION'} />
+                          </div>
+                        ) : (
                           <div className="pt-2">
-                            <label className="block text-sm font-medium text-[#007ACC] mb-2">Mark Correct Answer</label>
-                            <div className="relative">
-                              <select
-                                value={q.correctAnswer}
-                                onChange={(e) => updateQuestion(index, 'correctAnswer', e.target.value)}
-                                className="appearance-none premium-input w-full pl-4 pr-10 py-3 rounded-lg bg-[#FFFFFF] border-2 border-[#4CAF50] focus:border-[#007ACC] focus:ring-4 focus:ring-[#007ACC]/20 cursor-pointer font-medium transition-all shadow-sm"
-                              >
-                                <option value="">-- Choose correct option --</option>
-                                {q.options.map((opt, oIdx) => opt && (
-                                  <option key={oIdx} value={opt}>Option {['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'][oIdx] || oIdx + 1} ({opt})</option>
-                                ))}
-                              </select>
-                              <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-[#007ACC]">
-                                <svg className="w-5 h-5 fill-current" viewBox="0 0 20 20"><path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" /></svg>
-                              </div>
-                            </div>
+                            <label className="block text-sm font-medium text-[#007ACC] mb-2">Correct Answer (Fill-up)</label>
+                            <input
+                              type="text"
+                              placeholder="Type the exact correct answer here..."
+                              value={q.correctAnswer}
+                              onChange={(e) => updateQuestion(index, 'correctAnswer', e.target.value)}
+                              className="premium-input w-full p-4 rounded-xl border border-[#4CAF50] focus:border-[#007ACC] transition-all font-mono"
+                            />
+                            <p className="text-xs text-[#2C3E50] mt-2 italic">* This field is case-sensitive for evaluation.</p>
                           </div>
-                        </>
-                      ) : q.questionType === 'SHORT_ANSWER' || q.questionType === 'LONG_ANSWER' ? (
-                        <div className="pt-2 border-2 border-dashed border-[#4CAF50]/50 rounded-xl p-6 text-center bg-[#FFFFFF]/40">
-                          <p className="text-[#2C3E50] font-medium mb-2">This is a descriptive {q.questionType === 'SHORT_ANSWER' ? 'short' : 'long'} answer question.</p>
-                          <p className="text-xs text-[#2C3E50] italic">Students will receive a text area to write their response. Manual evaluation is supported.</p>
-                          <input type="hidden" value={q.correctAnswer = 'MANUAL_EVALUATION'} />
-                        </div>
-                      ) : (
-                        <div className="pt-2">
-                          <label className="block text-sm font-medium text-[#007ACC] mb-2">Correct Answer (Fill-up)</label>
-                          <input
-                            type="text"
-                            placeholder="Type the exact correct answer here..."
-                            value={q.correctAnswer}
-                            onChange={(e) => updateQuestion(index, 'correctAnswer', e.target.value)}
-                            className="premium-input w-full p-4 rounded-xl border border-[#4CAF50] focus:border-[#007ACC] transition-all font-mono"
-                          />
-                          <p className="text-xs text-[#2C3E50] mt-2 italic">* This field is case-sensitive for evaluation.</p>
-                        </div>
-                      )}
+                        )}
+                      </div>
                     </div>
-                  </div>
+                  )
                 ))}
 
                 {questions.length === 0 && (

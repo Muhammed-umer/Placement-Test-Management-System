@@ -7,6 +7,38 @@ import {
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import * as pdfjsLib from 'pdfjs-dist';
+
+// Available topics for AI generation
+const AVAILABLE_TOPICS = [
+  'Array',
+  'LinkedList',
+  'Tree',
+  'Graph',
+  'Hash Map',
+  'Stack',
+  'Queue',
+  'Sorting',
+  'Searching',
+  'Greedy',
+  'Dynamic Programming',
+  'Recursion',
+  'String',
+  'Math',
+  'Bit Manipulation',
+  'Design Patterns',
+  'OOP Concepts',
+  'JavaScript Closures',
+  'Python Fundamentals',
+  'Java Basics',
+  'Web Development',
+  'REST API',
+  'Database Design',
+  'System Design',
+  'Authentication',
+  'Mock Interview',
+  'Behavioral Questions'
+];
+
 pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
 const StudentProfileModal = ({ student, onClose }) => {
   const [stats, setStats] = useState(null);
@@ -225,7 +257,7 @@ export default function AdminDashboard() {
     setIsAiGenerating(true);
     try {
       const token = sessionStorage.getItem('token');
-      const res = await fetch('http://localhost:8081/api/v1/ai/generate', {
+      const res = await fetch('http://localhost:8082/api/v1/ai/generate', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
@@ -242,15 +274,51 @@ export default function AdminDashboard() {
       });
       if(res.ok) {
         const generated = await res.json();
-        if(Array.isArray(generated)) {
-            setQuestions([...questions, ...generated]);
-            setToastMessage({ title: 'AI successfully generated questions!', type: 'success' });
+        
+        if(Array.isArray(generated) && generated.length > 0) {
+            // Map AI-generated questions to frontend format or preserve CodeForces data
+            const mappedQuestions = generated.map(q => {
+              // If this is a CodeForces problem, keep all properties
+              if (q.codeforces_link) {
+                return q; // Keep CodeForces object as-is
+              }
+              // Otherwise, map regular questions
+              if (type === 'CODING') {
+                return {
+                  type: q.type || 'CODING',
+                  title: q.title || '',
+                  description: q.description || '',
+                  inputFormat: q.inputFormat || '',
+                  outputFormat: q.outputFormat || '',
+                  constraints: q.constraints || '',
+                  testCases: Array.isArray(q.testCases) ? q.testCases : [],
+                  points: q.points || 50
+                };
+              } else {
+                return {
+                  questionType: q.questionType || 'MCQ',
+                  title: q.title || '',
+                  description: q.description || '',
+                  options: Array.isArray(q.options) ? q.options : [],
+                  correctAnswer: q.correctAnswer || '',
+                  points: q.points || 10
+                };
+              }
+            });
+            
+            console.log('[Admin] Successfully added ' + mappedQuestions.length + ' new problem(s)');
+            setQuestions([...questions, ...mappedQuestions]);
+            setToastMessage({ title: 'AI successfully generated ' + mappedQuestions.length + ' problem(s)!', type: 'success' });
             setAiModalOpen(false);
+            setAiTopic('');  // Reset topic
         } else {
-            setToastMessage({ title: 'Unexpected AI response format.', type: 'error' });
+            setToastMessage({ title: 'AI returned no questions. Try again with different settings.', type: 'error' });
+            console.error('[Admin] Generated data is not an array or empty:', generated);
         }
       } else {
-        setToastMessage({ title: 'AI generation failed.', type: 'error' });
+        const errorText = await res.text();
+        setToastMessage({ title: 'AI generation failed: ' + res.status, type: 'error' });
+        console.error('[Admin] API response not ok:', res.status, errorText);
       }
     } catch (err) {
       console.error(err);
@@ -790,7 +858,12 @@ export default function AdminDashboard() {
                   <div className="space-y-4">
                     <div>
                       <label className="block text-sm font-bold text-[#2C3E50] mb-1">Topic</label>
-                      <input type="text" value={aiTopic} onChange={e => setAiTopic(e.target.value)} placeholder="e.g. Binary Trees, OOP concepts..." className="w-full p-3 rounded-xl border border-slate-200 outline-none focus:border-[#007ACC]" />
+                      <select value={aiTopic} onChange={e => setAiTopic(e.target.value)} className="w-full p-3 rounded-xl border border-slate-200 outline-none focus:border-[#007ACC] bg-white cursor-pointer">
+                        <option value="">-- Select a Topic --</option>
+                        {AVAILABLE_TOPICS.map(topic => (
+                          <option key={topic} value={topic}>{topic}</option>
+                        ))}
+                      </select>
                     </div>
                     <div className="flex gap-4">
                       <div className="flex-1">

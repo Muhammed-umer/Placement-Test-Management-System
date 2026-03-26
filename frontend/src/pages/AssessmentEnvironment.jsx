@@ -458,6 +458,9 @@ export default function AssessmentEnvironment() {
   const endTime = assessment?.endTime ? new Date(assessment.endTime) : null;
   const isAfterEnd = endTime && now > endTime;
   const currentQ = questions[currentQuestionIdx];
+  const sampleTestCases = currentQ?.testCases?.filter(tc => tc.isSample) || [];
+  const generatedTestCases = currentQ?.testCases?.filter(tc => !tc.isSample) || [];
+  const orderedTestCases = [...sampleTestCases, ...generatedTestCases];
 
   // Auto-submit when time runs out
   useEffect(() => {
@@ -627,19 +630,38 @@ export default function AssessmentEnvironment() {
                   <h4 className="text-[#2C3E50] font-black text-[10px] uppercase tracking-widest ml-2">Format & Constraints</h4>
                   <div className="p-6 bg-[#FFFFFF] rounded-2xl text-sm border-2 border-[#4CAF50] font-sans text-[#2C3E50] shadow-sm font-bold">
                     <p className="mb-4"><strong className="text-[#007ACC] block text-[10px] uppercase tracking-widest font-black mb-1">Input Format</strong> {currentQ?.inputFormat}</p>
-                    <p><strong className="text-[#007ACC] block text-[10px] uppercase tracking-widest font-black mb-1">Constraints</strong> {currentQ?.constraints}</p>
+                    <div>
+                      <strong className="text-[#007ACC] block text-[10px] uppercase tracking-widest font-black mb-1">Constraints</strong>
+                      <div className="space-y-1">
+                        {currentQ?.constraints
+                          ? currentQ.constraints
+                              .split(/;|\n/)
+                              .map((c, idx) => (
+                                <div key={idx} className="leading-snug">
+                                  {c.trim()}
+                                </div>
+                              ))
+                          : null}
+                      </div>
+                    </div>
                   </div>
                   
-                  {currentQ?.testCases?.filter(tc => tc.isSample).length > 0 && (
+                  {orderedTestCases.length > 0 && (
                     <div className="mt-8">
-                       <h4 className="text-[#2C3E50] font-black text-[10px] uppercase tracking-widest ml-2 mb-4">Sample Test Cases</h4>
+                       <h4 className="text-[#2C3E50] font-black text-[10px] uppercase tracking-widest ml-2 mb-1">Test Cases</h4>
+                       <p className="text-xs text-[#2C3E50]/70 ml-2 mb-3 font-semibold">
+                         {orderedTestCases.length} test case{orderedTestCases.length > 1 ? 's' : ''} — {sampleTestCases.length} sample, {generatedTestCases.length} generated
+                       </p>
                        <div className="space-y-6">
-                         {currentQ.testCases.filter(tc => tc.isSample).map((tc, idx) => (
+                         {orderedTestCases.map((tc, idx) => (
                            <div key={idx} className="p-6 bg-[#FFFFFF] rounded-2xl text-sm border-2 border-[#4CAF50]/50 font-sans shadow-sm">
-                             <div className="mb-4">
-                               <strong className="text-[#007ACC] block text-[10px] uppercase tracking-widest font-black mb-2">Input {idx + 1}</strong>
-                               <pre className="bg-[#F4F4F4] p-4 rounded-xl text-xs text-[#2C3E50] font-mono overflow-auto">{tc.input}</pre>
+                             <div className="mb-4 flex items-center justify-between gap-3">
+                               <strong className="text-[#007ACC] block text-[10px] uppercase tracking-widest font-black">Input {idx + 1}</strong>
+                               <span className={`text-[10px] font-black px-2 py-1 rounded-full border ${tc.isSample ? 'border-[#007ACC] text-[#007ACC]' : 'border-[#4CAF50] text-[#4CAF50]'}`}>
+                                 {tc.isSample ? 'Sample' : 'Generated'}
+                               </span>
                              </div>
+                             <pre className="bg-[#F4F4F4] p-4 rounded-xl text-xs text-[#2C3E50] font-mono overflow-auto mb-4">{tc.input}</pre>
                              <div>
                                <strong className="text-[#007ACC] block text-[10px] uppercase tracking-widest font-black mb-2">Expected Output {idx + 1}</strong>
                                <pre className="bg-[#F4F4F4] p-4 rounded-xl text-xs text-[#2C3E50] font-mono overflow-auto">{tc.expectedOutput}</pre>
